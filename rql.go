@@ -384,7 +384,7 @@ func (p *Parser) sort(fields []string) string {
 		}
 		expect(p.fields[field] != nil, "unrecognized key %q for sorting", field)
 		expect(p.fields[field].Sortable, "field %q is not sortable", field)
-		colName := p.colName(field)
+		colName := fmt.Sprintf("lower(%v)", p.colName(field))
 		if orderBy != "" {
 			colName += " " + orderBy
 		}
