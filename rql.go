@@ -149,6 +149,7 @@ func MustNewParser(c Config) *Parser {
 	if err != nil {
 		panic(err)
 	}
+
 	return p
 }
 
@@ -159,7 +160,18 @@ func (p *Parser) Parse(b []byte) (pr *Params, err error) {
 	if err := q.UnmarshalJSON(b); err != nil {
 		return nil, &ParseError{"decoding buffer to *Query: " + err.Error()}
 	}
-	return p.ParseQuery(q)
+
+	r, err := p.ParseQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	// adapt for postgres
+	for i := 1; i <= len(r.FilterArgs); i++ {
+		r.FilterExp = strings.Replace(r.FilterExp, " ?", fmt.Sprintf(" $%v", i), -1)
+	}
+
+	return r, nil
 }
 
 // ParseQuery parses the given struct into a Param object. It returns an error
