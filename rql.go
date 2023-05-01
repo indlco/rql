@@ -167,8 +167,9 @@ func (p *Parser) Parse(b []byte) (pr *Params, err error) {
 	}
 
 	// adapt for postgres
-	for i := 1; i <= len(r.FilterArgs); i++ {
-		r.FilterExp = strings.Replace(r.FilterExp, " ?", fmt.Sprintf(" $%v", i), -1)
+	cnt := strings.Count(r.FilterExp, " ?")
+	for i := 1; i <= cnt; i++ {
+		r.FilterExp = strings.Replace(r.FilterExp, " ?", fmt.Sprintf(" $%v", i), 1)
 	}
 
 	return r, nil
@@ -420,6 +421,10 @@ func (p *parseState) and(f map[string]interface{}) {
 			terms, ok := v.([]interface{})
 			expect(ok, "$and must be type array")
 			p.relOp(AND, terms)
+		case k == p.op(NOT):
+			terms, ok := v.([]interface{})
+			expect(ok, "$not must be type array")
+			p.relOp(NOT, terms)
 		case p.fields[k] != nil:
 			expect(p.fields[k].Filterable, "field %q is not filterable", k)
 			p.field(p.fields[k], v)
