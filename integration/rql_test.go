@@ -25,6 +25,8 @@ type User struct {
 	ID          int       `rql:"filter,sort"`
 	Admin       bool      `rql:"filter"`
 	Name        string    `rql:"filter"`
+	Groupable   string    `rql:"filter,group"`
+	Amount      string    `rql:"filter,aggregate"`
 	AddressName string    `rql:"filter"`
 	CreatedAt   time.Time `rql:"filter"`
 	UnixTime    time.Time `rql:"filter,layout=UnixDate"`

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +57,32 @@ type Query struct {
 	//	}`))
 	//
 	Filter map[string]interface{} `json:"filter,omitempty"`
+
+	// ## in development
+	// Aggregate is the query object for building the value for the `SELECT` clause when grouped.
+	// An example for filter object:
+	//
+	//	params, err := p.Parse([]byte(`{
+	//		"aggregate": {
+	//			"gold": { "$sum": "gold_fieldname" },		// returns SUM(gold_fieldname) AS gold
+	//			"silver": { "$avg": "silver_fieldname" },	// returns AVG(silver_fieldname) AS silver
+	//			"bronze": { "$min": "bronze_fieldname" },	// returns MIN(bronze_fieldname) AS bronze
+	//			"bronze": { "$max": "bronze_fieldname" },	// returns MAX(bronze_fieldname) AS bronze
+	//			"bronze": { "$count": "bronze_fieldname" },	// returns COUNT(bronze_fieldname) AS bronze
+	//		}
+	//	}`))
+	//
+	Aggregate map[string]interface{} `json:"aggregate,omitempty"`
+
+	// ## in development
+	// Group is the query object for building the value for the `GROUP` clause and will be appended to the `SELECT` clause.
+	// An example for filter object:
+	//
+	//	params, err := p.Parse([]byte(`{
+	//		"group": ["name", "age"]
+	//	}`))
+	//
+	Group []string `json:"group,omitempty"`
 }
 
 // Params is the parser output after calling to `Parse`. You should pass its
@@ -79,7 +106,7 @@ type Params struct {
 	Limit int
 	// Offset specifies the offset of the first row to return. Useful for pagination.
 	Offset int
-	// Select contains the expression for the `SELECT` clause defined in the Query.
+	// Select contains the expression for the `SELECT` clause defined in the Query. If group is not empty, values are automatically replaced by the group string and the aggregate string.
 	Select string
 	// Sort used as a parameter for the `ORDER BY` clause. For example, "age desc, name".
 	Sort string
@@ -93,6 +120,8 @@ type Params struct {
 	// 	   Args: "a8m", 22
 	FilterExp  string
 	FilterArgs []interface{}
+	// GroupBy contains the expression for the `GROUP BY` clause defined in the Query. Values are automatically added to select string.
+	Group string
 }
 
 // ParseError is type of error returned when there is a parsing problem.
@@ -112,6 +141,10 @@ type field struct {
 	Sortable bool
 	// Has a "filter" option in the tag.
 	Filterable bool
+	// Has a "group" option in the tag.
+	Groupable bool
+	// Has a "aggregate" option in the tag.
+	Aggregateable bool
 	// All supported operators for this field.
 	FilterOps map[string]bool
 	// Validation for the type. for example, unit8 greater than or equal to 0.
@@ -172,6 +205,8 @@ func (p *Parser) Parse(b []byte) (pr *Params, err error) {
 		r.FilterExp = strings.Replace(r.FilterExp, " ?", fmt.Sprintf(" $%v", i), 1)
 	}
 
+	// row group queries
+
 	return r, nil
 }
 
@@ -205,7 +240,15 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 {
 		pr.Sort = p.sort(p.DefaultSort)
 	}
-	pr.Select = strings.Join(q.Select, ", ")
+	pr.Group = p.group(q.Group)
+	if len(pr.Group) > 0 {
+		aps := p.newParseState()
+		aps.aggregate(q.Aggregate)
+		pr.Select = pr.Group + ", " + aps.String()
+		parseStatePool.Put(aps)
+	} else {
+		pr.Select = strings.Join(q.Select, ", ")
+	}
 	parseStatePool.Put(ps)
 	return
 }
@@ -282,6 +325,10 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			f.Sortable = true
 		case s == "filter":
 			f.Filterable = true
+		case s == "group":
+			f.Groupable = true
+		case s == "aggregate":
+			f.Aggregateable = true
 		case strings.HasPrefix(opt, "column"):
 			f.Name = strings.TrimPrefix(opt, "column=")
 		case strings.HasPrefix(opt, "layout"):
@@ -404,6 +451,59 @@ func (p *Parser) sort(fields []string) string {
 		sortParams[i] = colName
 	}
 	return strings.Join(sortParams, ", ")
+}
+
+func (p *Parser) group(fields []string) string {
+	sortParams := make([]string, len(fields))
+	for i, field := range fields {
+		expect(field != "", "group field can not be empty")
+		expect(p.fields[field] != nil, "unrecognized key %q for grouping", field)
+		expect(p.fields[field].Groupable, "field %q is not groupable", field)
+		colName := fmt.Sprintf("%v", p.colName(field))
+		sortParams[i] = colName
+	}
+	return strings.Join(sortParams, ", ")
+}
+
+func (p *parseState) aggregate(f map[string]interface{}) {
+	// "gold": { "$sum": "gold_fieldname" },		// returns SUM(gold_fieldname) AS gold
+	var i int
+	for as, intrfc := range f {
+		expect(validateCustomColumnString(as), "invalid datatype for aggregation field %q", as)
+		if i > 0 {
+			p.WriteString(", ")
+		}
+		agg, ok := intrfc.(map[string]interface{})
+		if !ok {
+			expect(false, "invalid datatype for aggregation field %q", as)
+		} else {
+			for k, v := range agg {
+				col, ok := v.(string)
+				if !ok {
+					expect(false, "invalid datatype for aggregation field %q", as)
+				}
+				if _, ok := p.fields[col]; !ok {
+					expect(false, "unrecognized field %q for aggregation", col)
+				}
+				expect(p.fields[col].Aggregateable, "field %q is not aggregateable", v)
+				switch k {
+				case p.op(COUNT):
+					p.WriteString(fmt.Sprintf("COUNT(%v) AS %v", col, as))
+				case p.op(SUM):
+					p.WriteString(fmt.Sprintf("SUM(%v) AS %v", col, as))
+				case p.op(AVG):
+					p.WriteString(fmt.Sprintf("AVG(%v) AS %v", col, as))
+				case p.op(MAX):
+					p.WriteString(fmt.Sprintf("MAX(%v) AS %v", col, as))
+				case p.op(MIN):
+					p.WriteString(fmt.Sprintf("MIN(%v) AS %v", col, as))
+				default:
+					expect(false, "unrecognized key %q for aggregation", k)
+				}
+			}
+		}
+		i++
+	}
 }
 
 func (p *parseState) and(f map[string]interface{}) {
@@ -654,4 +754,9 @@ var layouts = map[string]string{
 	"StampMilli":  time.StampMilli,
 	"StampMicro":  time.StampMicro,
 	"StampNano":   time.StampNano,
+}
+
+func validateCustomColumnString(columnName string) bool {
+	re := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	return re.MatchString(columnName)
 }

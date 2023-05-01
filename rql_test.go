@@ -125,6 +125,7 @@ func TestParse(t *testing.T) {
 		wantErr bool
 		wantOut *Params
 	}{
+
 		{
 			name: "simple test",
 			conf: Config{
@@ -136,25 +137,25 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"name": "foo",
-					"age": 12,
-					"$or": [
-						{ "address": "DC" },
-						{ "address": "Marvel" }
-					],
-					"$and": [
-						{ "age": { "$neq": 10} },
-						{ "age": { "$neq": 20} },
-						{ "$or": [{ "age": 11 }, {"age": 10}] }
-					],
-					"$not": [
-						{ "age": { "$neq": 10} },
-						{ "age": { "$neq": 20} },
-						{ "$or": [{ "age": 11 }, {"age": 10}] }
-					]
-				}
-			}`),
+							"filter": {
+								"name": "foo",
+								"age": 12,
+								"$or": [
+									{ "address": "DC" },
+									{ "address": "Marvel" }
+								],
+								"$and": [
+									{ "age": { "$neq": 10} },
+									{ "age": { "$neq": 20} },
+									{ "$or": [{ "age": 11 }, {"age": 10}] }
+								],
+								"$not": [
+									{ "age": { "$neq": 10} },
+									{ "age": { "$neq": 20} },
+									{ "$or": [{ "age": 11 }, {"age": 10}] }
+								]
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address = ? OR address = ?) AND (age <> ? AND age <> ? AND (age = ? OR age = ?))",
@@ -174,15 +175,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"name": "foo",
-					"age": 12,
-					"$or": [
-						{ "address_name": "DC" },
-						{ "address_name": "Marvel" }
-					]
-				}
-			}`),
+							"filter": {
+								"name": "foo",
+								"age": 12,
+								"$or": [
+									{ "address_name": "DC" },
+									{ "address_name": "Marvel" }
+								]
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address_name = ? OR address_name = ?)",
@@ -203,15 +204,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"name": "foo",
-					"age": 12,
-					"$or": [
-						{ "address.name": "DC" },
-						{ "address.name": "Marvel" }
-					]
-				}
-			}`),
+							"filter": {
+								"name": "foo",
+								"age": 12,
+								"$or": [
+									{ "address.name": "DC" },
+									{ "address.name": "Marvel" }
+								]
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address_name = ? OR address_name = ?)",
@@ -235,15 +236,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"name": "foo",
-					"age": 12,
-					"$or": [
-						{ "address": "DC" },
-						{ "address": "Marvel" }
-					]
-				}
-			}`),
+							"filter": {
+								"name": "foo",
+								"age": 12,
+								"$or": [
+									{ "address": "DC" },
+									{ "address": "Marvel" }
+								]
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address = ? OR address = ?)",
@@ -278,11 +279,11 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"address": "foo",
-					"age": 12.5
-				}
-			}`),
+							"filter": {
+								"address": "foo",
+								"age": 12.5
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address = ? AND age = ?",
@@ -302,14 +303,14 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"bool": true,
-					"int8": 1,
-					"uint8": 1,
-					"null_bool": true,
-					"ptr_null_bool": true
-				}
-			}`),
+							"filter": {
+								"bool": true,
+								"int8": 1,
+								"uint8": 1,
+								"null_bool": true,
+								"ptr_null_bool": true
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "bool = ? AND int8 = ? AND uint8 = ? AND null_bool = ? AND ptr_null_bool = ?",
@@ -330,15 +331,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"null_int64": 1,
-					"ptr_null_int64": 1,
-					"null_float64": 1,
-					"ptr_null_float64": 1,
-					"null_string": "",
-					"ptr_null_string": ""
-				}
-			}`),
+							"filter": {
+								"null_int64": 1,
+								"ptr_null_int64": 1,
+								"null_float64": 1,
+								"ptr_null_float64": 1,
+								"null_string": "",
+								"ptr_null_string": ""
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "null_int64 = ? AND ptr_null_int64 = ? AND null_float64 = ? AND ptr_null_float64 = ? AND null_string = ? AND ptr_null_string = ?",
@@ -360,13 +361,13 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": "2018-01-14T06:05:48.839Z",
-					"updated_at": "2018-01-14T06:05:48.839Z",
-					"swagger_date": "2018-01-14T06:05:48.839Z",
-					"ptr_swagger_date": "2018-01-14T06:05:48.839Z"
-				}
-			}`),
+							"filter": {
+								"created_at": "2018-01-14T06:05:48.839Z",
+								"updated_at": "2018-01-14T06:05:48.839Z",
+								"swagger_date": "2018-01-14T06:05:48.839Z",
+								"ptr_swagger_date": "2018-01-14T06:05:48.839Z"
+							}
+						}`),
 			wantOut: &Params{
 				Limit:     25,
 				FilterExp: "created_at = ? AND updated_at = ? AND swagger_date = ? AND ptr_swagger_date = ?",
@@ -389,16 +390,16 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"age": { "$gt": 10 },
-					"name": { "$like": "%foo%" },
-					"$and": { "name": {"$ilike": "%foo%" } },
-					"$or": [
-						{ "address": { "$eq": "DC" } },
-						{ "address": { "$neq": "Marvel" } }
-					]
-				}
-			}`),
+							"filter": {
+								"age": { "$gt": 10 },
+								"name": { "$like": "%foo%" },
+								"$and": { "name": {"$ilike": "%foo%" } },
+								"$or": [
+									{ "address": { "$eq": "DC" } },
+									{ "address": { "$neq": "Marvel" } }
+								]
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "age > ? AND name LIKE ? AND (name ILIKE ?) AND (address = ? OR address <> ?)",
@@ -420,19 +421,19 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": { "@gt": "2018-01-14T06:05:48.839Z" },
-					"work#address": { "@like": "%DC%" },
-					"@or": [
-						{
-							"work#salary": 100
-						},
-						{
-							"work#salary": { "@gte": 200, "@lte": 300 }
-						}
-					]
-				}
-			}`),
+							"filter": {
+								"created_at": { "@gt": "2018-01-14T06:05:48.839Z" },
+								"work#address": { "@like": "%DC%" },
+								"@or": [
+									{
+										"work#salary": 100
+									},
+									{
+										"work#salary": { "@gte": 200, "@lte": 300 }
+									}
+								]
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "created_at > ? AND work_address LIKE ? AND (work_salary = ? OR (work_salary >= ? AND work_salary <= ?))",
@@ -456,11 +457,11 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"address.zip.code": 100
-				},
-				"sort": ["address.name", "-address.zip.code", "+age"]
-			}`),
+							"filter": {
+								"address.zip.code": 100
+							},
+							"sort": ["address.name", "-address.zip.code", "+age"]
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
@@ -484,11 +485,11 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"address_zip_code": 100
-				},
-				"sort": ["address_name", "-address_zip_code", "+age"]
-			}`),
+							"filter": {
+								"address_zip_code": 100
+							},
+							"sort": ["address_name", "-address_zip_code", "+age"]
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
@@ -513,11 +514,11 @@ func TestParse(t *testing.T) {
 				DefaultSort:  []string{"-name"},
 			},
 			input: []byte(`{
-				"filter": {
-					"address_zip_code": 100
-				},
-				"sort": []
-			}`),
+							"filter": {
+								"address_zip_code": 100
+							},
+							"sort": []
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
@@ -542,11 +543,11 @@ func TestParse(t *testing.T) {
 				DefaultSort:  []string{"-name"},
 			},
 			input: []byte(`{
-				"filter": {
-					"address_zip_code": 100
-				},
-				"sort": ["-age"]
-			}`),
+							"filter": {
+								"address_zip_code": 100
+							},
+							"sort": ["-age"]
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
@@ -564,8 +565,8 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"select": ["name"]
-			}`),
+							"select": ["name"]
+						}`),
 			wantOut: &Params{
 				Limit:  25,
 				Select: "name",
@@ -581,8 +582,8 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"select": ["name", "age"]
-			}`),
+							"select": ["name", "age"]
+						}`),
 			wantOut: &Params{
 				Limit:  25,
 				Select: "name, age",
@@ -597,11 +598,11 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-				"filter": {
-					"full_name": "a8m"
-				},
-				"sort": ["full_name"]
-			}`),
+							"filter": {
+								"full_name": "a8m"
+							},
+							"sort": ["full_name"]
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "full_name = ?",
@@ -623,13 +624,13 @@ func TestParse(t *testing.T) {
 				FieldSep: ".",
 			},
 			input: []byte(`{
-				"filter": {
-					"id": "id",
-					"full_name": "full_name",
-					"http_url": "http_url",
-					"nested_struct.uuid": "uuid"
-				}
-			}`),
+							"filter": {
+								"id": "id",
+								"full_name": "full_name",
+								"http_url": "http_url",
+								"nested_struct.uuid": "uuid"
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "id = ? AND full_name = ? AND http_url = ? AND nested_struct_uuid = ?",
@@ -644,10 +645,10 @@ func TestParse(t *testing.T) {
 				}),
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": { "$gt": "Thu May 23 09:30:06 IDT 2000" }
-				}
-			}`),
+							"filter": {
+								"created_at": { "$gt": "Thu May 23 09:30:06 IDT 2000" }
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "created_at > ?",
@@ -662,10 +663,10 @@ func TestParse(t *testing.T) {
 				}),
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": { "$gt": "2006-01-02 15:04" }
-				}
-			}`),
+							"filter": {
+								"created_at": { "$gt": "2006-01-02 15:04" }
+							}
+						}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "created_at > ?",
@@ -680,10 +681,10 @@ func TestParse(t *testing.T) {
 				}),
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": { "$gt": "2006-01-02 15:04" }
-				}
-			}`),
+							"filter": {
+								"created_at": { "$gt": "2006-01-02 15:04" }
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -695,11 +696,11 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"age": "a8m",
-					"name": 10
-				}
-			}`),
+							"filter": {
+								"age": "a8m",
+								"name": 10
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -710,10 +711,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"age": 1.1
-				}
-			}`),
+							"filter": {
+								"age": 1.1
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -724,10 +725,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"name": 10
-				}
-			}`),
+							"filter": {
+								"name": 10
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -738,10 +739,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"age": "a8m"
-				}
-			}`),
+							"filter": {
+								"age": "a8m"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -752,10 +753,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"age": -1
-				}
-			}`),
+							"filter": {
+								"age": -1
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -766,10 +767,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": "Sunday?"
-				}
-			}`),
+							"filter": {
+								"created_at": "Sunday?"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -780,10 +781,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"created_at": 12736186894
-				}
-			}`),
+							"filter": {
+								"created_at": 12736186894
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -794,10 +795,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"admin": "false"
-				}
-			}`),
+							"filter": {
+								"admin": "false"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -808,10 +809,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"age": "13"
-				}
-			}`),
+							"filter": {
+								"age": "13"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -822,10 +823,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"age": "a8m"
-				}
-			}`),
+							"filter": {
+								"age": "a8m"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -836,10 +837,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"name": "a8m"
-				}
-			}`),
+							"filter": {
+								"name": "a8m"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -850,10 +851,10 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"name": "a8m"
-				}
-			}`),
+							"filter": {
+								"name": "a8m"
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -864,8 +865,8 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"sort": ["name"]
-			}`),
+							"sort": ["name"]
+						}`),
 			wantErr: true,
 		},
 		{
@@ -876,12 +877,12 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"name": {
-						"$gt": 10
-					}
-				}
-			}`),
+							"filter": {
+								"name": {
+									"$gt": 10
+								}
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -892,12 +893,12 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
-				"filter": {
-					"name": {
-						"$regex": ".*"
-					}
-				}
-			}`),
+							"filter": {
+								"name": {
+									"$regex": ".*"
+								}
+							}
+						}`),
 			wantErr: true,
 		},
 		{
@@ -906,12 +907,69 @@ func TestParse(t *testing.T) {
 				Model: struct{}{},
 			},
 			input: []byte(`{
-				"limit": 10,
-				"offset": 4
-			}`),
+							"limit": 10,
+							"offset": 4
+						}`),
 			wantOut: &Params{
 				Limit:  10,
 				Offset: 4,
+			},
+		},
+		{
+			name: "group",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  string `rql:"filter,group"`
+				}{},
+				DefaultLimit: 10,
+			},
+			input: []byte(`{
+						"group": ["name", "age"]
+						}`),
+			wantOut: &Params{
+				Select: "name, age",
+				Group:  "name, age",
+				Limit:  10,
+			},
+		},
+		{
+			name: "group aggregate - unrecognized field",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  int    `rql:"filter,group,aggregate"`
+				}{},
+				DefaultLimit: 10,
+			},
+			input: []byte(`{
+				"group": ["name", "age"],
+				"aggregate": {
+					"gold": { "$sum": "gold_fieldname" }
+				}
+				}`),
+			wantErr: true,
+		},
+		{
+			name: "group aggregate",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  int    `rql:"filter,group,aggregate"`
+				}{},
+				DefaultLimit: 10,
+			},
+			input: []byte(`{
+			"group": ["name", "age"],
+			"aggregate": {
+				"gold": { "$sum": "age" },
+				"count": { "$count": "age" }
+			}
+			}`),
+			wantOut: &Params{
+				Select: "name, age, SUM(age) AS gold, COUNT(age) AS count",
+				Group:  "name, age",
+				Limit:  10,
 			},
 		},
 		{

@@ -27,6 +27,11 @@ const (
 	NOT   = Op("not")   // disjunction
 	OR    = Op("or")    // disjunction
 	AND   = Op("and")   // conjunction
+	COUNT = Op("count") // aggregation
+	SUM   = Op("sum")   // aggregation
+	AVG   = Op("avg")   // aggregation
+	MIN   = Op("min")   // aggregation
+	MAX   = Op("max")   // aggregation
 )
 
 // Default values for configuration.
