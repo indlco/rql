@@ -310,7 +310,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		filterOps = append(filterOps, EQ, NEQ)
 	case reflect.String:
 		f.ValidateFn = validateString
-		filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE, LIKE)
+		filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE, LIKE, ILIKE)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		f.ValidateFn = validateInt
 		f.CovertFn = convertInt
@@ -424,7 +424,7 @@ func (p *parseState) and(f map[string]interface{}) {
 		case k == p.op(NOT):
 			terms, ok := v.([]interface{})
 			expect(ok, "$not must be type array")
-			p.relOp(NOT, terms)
+			p.notOp(NOT, terms)
 		case p.fields[k] != nil:
 			expect(p.fields[k].Filterable, "field %q is not filterable", k)
 			p.field(p.fields[k], v)
@@ -444,6 +444,29 @@ func (p *parseState) relOp(op Op, terms []interface{}) {
 		if i > 0 {
 			p.WriteByte(' ')
 			p.WriteString(op.SQL())
+			p.WriteByte(' ')
+		}
+		mt, ok := t.(map[string]interface{})
+		expect(ok, "expressions for $%s operator must be type object", op)
+		p.and(mt)
+		i++
+	}
+	if len(terms) > 1 {
+		p.WriteByte(')')
+	}
+}
+
+func (p *parseState) notOp(op Op, terms []interface{}) {
+	var i int
+	p.WriteString(op.SQL())
+	p.WriteByte(' ')
+	if len(terms) > 1 {
+		p.WriteByte('(')
+	}
+	for _, t := range terms {
+		if i > 0 {
+			p.WriteByte(' ')
+			p.WriteString(AND.SQL())
 			p.WriteByte(' ')
 		}
 		mt, ok := t.(map[string]interface{})
