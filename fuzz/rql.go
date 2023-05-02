@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"strings"
 	"time"
 
 	"github.com/a8m/rql"
@@ -25,7 +26,7 @@ func Fuzz(b []byte) int {
 	if err != nil {
 		return -1
 	}
-	if len(params.FilterArgs) > 0 || params.Sort != "" {
+	if len(params.FilterArgs) > 0 || strings.Join(params.Sort, ", ") != "" {
 		return 1
 	}
 	return 0

@@ -125,7 +125,6 @@ func TestParse(t *testing.T) {
 		wantErr bool
 		wantOut *Params
 	}{
-
 		{
 			name: "simple test",
 			conf: Config{
@@ -466,7 +465,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       "address_name, address_zip_code desc, age asc",
+				Sort:       []string{"address_name", "address_zip_code desc", "age asc"},
 			},
 		},
 		{
@@ -494,7 +493,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       "address_name, address_zip_code desc, age asc",
+				Sort:       []string{"address_name", "address_zip_code desc", "age asc"},
 			},
 		},
 		{
@@ -523,7 +522,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       "name desc",
+				Sort:       []string{"name desc"},
 			},
 		},
 		{
@@ -552,7 +551,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       "age desc",
+				Sort:       []string{"age desc"},
 			},
 		},
 		{
@@ -569,7 +568,7 @@ func TestParse(t *testing.T) {
 						}`),
 			wantOut: &Params{
 				Limit:  25,
-				Select: "name",
+				Select: []string{"name"},
 			},
 		},
 		{
@@ -586,7 +585,7 @@ func TestParse(t *testing.T) {
 						}`),
 			wantOut: &Params{
 				Limit:  25,
-				Select: "name, age",
+				Select: []string{"name", "age"},
 			},
 		},
 		{
@@ -607,7 +606,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "full_name = ?",
 				FilterArgs: []interface{}{"a8m"},
-				Sort:       "full_name",
+				Select:     []string{"full_name"},
 			},
 		},
 		{
@@ -916,6 +915,20 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "select column validation",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  string `rql:"filter,group"`
+				}{},
+				DefaultLimit: 10,
+			},
+			input: []byte(`{
+						"select": ["hello", "age"]
+						}`),
+			wantErr: true,
+		},
+		{
 			name: "group",
 			conf: Config{
 				Model: struct {
@@ -928,8 +941,8 @@ func TestParse(t *testing.T) {
 						"group": ["name", "age"]
 						}`),
 			wantOut: &Params{
-				Select: "name, age",
-				Group:  "name, age",
+				Select: []string{"name", "age"},
+				Group:  []string{"name", "age"},
 				Limit:  10,
 			},
 		},
@@ -967,8 +980,8 @@ func TestParse(t *testing.T) {
 			}
 			}`),
 			wantOut: &Params{
-				Select: "name, age, SUM(age) AS gold, COUNT(age) AS count",
-				Group:  "name, age",
+				Select: []string{"name", "age", "SUM(age) AS gold", "COUNT(age) AS count"},
+				Group:  []string{"name", "age"},
 				Limit:  10,
 			},
 		},
@@ -1033,16 +1046,16 @@ func assertParams(t *testing.T, got *Params, want *Params) {
 	if got.Offset != want.Offset {
 		t.Fatalf("offset: got: %v want %v", got.Limit, want.Limit)
 	}
-	if got.Sort != want.Sort {
+	if !EqualUnorderedStringSlice(got.Sort, want.Sort) {
 		t.Fatalf("sort: got: %q want %q", got.Sort, want.Sort)
 	}
-	if got.Select != want.Select {
+	if !EqualUnorderedStringSlice(got.Select, want.Select) {
 		t.Fatalf("select: got: %q want %q", got.Select, want.Select)
 	}
 	if !equalExp(got.FilterExp, want.FilterExp) || !equalExp(want.FilterExp, got.FilterExp) {
 		t.Fatalf("filter expr:\n\tgot: %q\n\twant %q", got.FilterExp, want.FilterExp)
 	}
-	if !equalArgs(got.FilterArgs, got.FilterArgs) || !equalArgs(want.FilterArgs, got.FilterArgs) {
+	if !equalArgs(got.FilterArgs, want.FilterArgs) || !equalArgs(want.FilterArgs, got.FilterArgs) {
 		t.Fatalf("filter args:\n\tgot: %v\n\twant %v", got.FilterArgs, want.FilterArgs)
 	}
 }
@@ -1112,4 +1125,20 @@ func split(e string) []string {
 func mustParseTime(layout, s string) time.Time {
 	t, _ := time.Parse(layout, s)
 	return t
+}
+
+func EqualUnorderedStringSlice(first, second []string) bool {
+	if len(first) != len(second) {
+		return false
+	}
+	exists := make(map[string]bool)
+	for _, value := range first {
+		exists[value] = true
+	}
+	for _, value := range second {
+		if !exists[value] {
+			return false
+		}
+	}
+	return true
 }

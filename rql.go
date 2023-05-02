@@ -107,9 +107,9 @@ type Params struct {
 	// Offset specifies the offset of the first row to return. Useful for pagination.
 	Offset int
 	// Select contains the expression for the `SELECT` clause defined in the Query. If group is not empty, values are automatically replaced by the group string and the aggregate string.
-	Select string
+	Select []string
 	// Sort used as a parameter for the `ORDER BY` clause. For example, "age desc, name".
-	Sort string
+	Sort []string
 	// FilterExp and FilterArgs come together and used as a parameters for the `WHERE` clause.
 	//
 	// examples:
@@ -121,7 +121,7 @@ type Params struct {
 	FilterExp  string
 	FilterArgs []interface{}
 	// GroupBy contains the expression for the `GROUP BY` clause defined in the Query. Values are automatically added to select string.
-	Group string
+	Group []string
 }
 
 // ParseError is type of error returned when there is a parsing problem.
@@ -226,6 +226,9 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	pr = &Params{
 		Limit: p.DefaultLimit,
 	}
+	if q.Offset < 0 && p.DefaultOffset > 0 {
+		q.Offset = p.DefaultOffset
+	}
 	expect(q.Offset >= 0, "offset must be greater than or equal to 0")
 	pr.Offset = q.Offset
 	if q.Limit != 0 {
@@ -242,12 +245,17 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	}
 	pr.Group = p.group(q.Group)
 	if len(pr.Group) > 0 {
-		aps := p.newParseState()
-		aps.aggregate(q.Aggregate)
-		pr.Select = pr.Group + ", " + aps.String()
-		parseStatePool.Put(aps)
+		pr.Select = append(pr.Select, pr.Group...)
+		if len(q.Aggregate) > 0 {
+			aps := p.newParseState()
+			aps.aggregate(q.Aggregate)
+			if v := strings.Split(aps.String(), ", "); len(v) > 0 {
+				pr.Select = append(pr.Select, v...)
+			}
+			parseStatePool.Put(aps)
+		}
 	} else {
-		pr.Select = strings.Join(q.Select, ", ")
+		pr.Select = p.validateSelect(q.Select)
 	}
 	parseStatePool.Put(ps)
 	return
@@ -431,8 +439,15 @@ func (p *Parser) newParseState() (ps *parseState) {
 	return
 }
 
+func (p *Parser) validateSelect(fields []string) []string {
+	for _, field := range fields {
+		expect(p.fields[field] != nil, "unrecognized field %q for select", field)
+	}
+	return fields
+}
+
 // sort build the sort clause.
-func (p *Parser) sort(fields []string) string {
+func (p *Parser) sort(fields []string) []string {
 	sortParams := make([]string, len(fields))
 	for i, field := range fields {
 		expect(field != "", "sort field can not be empty")
@@ -450,10 +465,10 @@ func (p *Parser) sort(fields []string) string {
 		}
 		sortParams[i] = colName
 	}
-	return strings.Join(sortParams, ", ")
+	return sortParams
 }
 
-func (p *Parser) group(fields []string) string {
+func (p *Parser) group(fields []string) []string {
 	sortParams := make([]string, len(fields))
 	for i, field := range fields {
 		expect(field != "", "group field can not be empty")
@@ -462,7 +477,7 @@ func (p *Parser) group(fields []string) string {
 		colName := fmt.Sprintf("%v", p.colName(field))
 		sortParams[i] = colName
 	}
-	return strings.Join(sortParams, ", ")
+	return sortParams
 }
 
 func (p *parseState) aggregate(f map[string]interface{}) {
