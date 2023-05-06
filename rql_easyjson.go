@@ -63,6 +63,29 @@ func easyjson4bc42f5bDecodeGithubComA8mRql(in *jlexer.Lexer, out *Query) {
 				}
 				in.Delim(']')
 			}
+		case "update":
+			if in.IsNull() {
+				in.Skip()
+				out.Update = nil
+			} else {
+				in.Delim('[')
+				if out.Update == nil {
+					if !in.IsDelim(']') {
+						out.Update = make([]string, 0, 4)
+					} else {
+						out.Update = []string{}
+					}
+				} else {
+					out.Update = (out.Update)[:0]
+				}
+				for !in.IsDelim(']') {
+					var v2 string
+					v2 = string(in.String())
+					out.Update = append(out.Update, v2)
+					in.WantComma()
+				}
+				in.Delim(']')
+			}
 		case "sort":
 			if in.IsNull() {
 				in.Skip()
@@ -79,9 +102,9 @@ func easyjson4bc42f5bDecodeGithubComA8mRql(in *jlexer.Lexer, out *Query) {
 					out.Sort = (out.Sort)[:0]
 				}
 				for !in.IsDelim(']') {
-					var v2 string
-					v2 = string(in.String())
-					out.Sort = append(out.Sort, v2)
+					var v3 string
+					v3 = string(in.String())
+					out.Sort = append(out.Sort, v3)
 					in.WantComma()
 				}
 				in.Delim(']')
@@ -99,15 +122,15 @@ func easyjson4bc42f5bDecodeGithubComA8mRql(in *jlexer.Lexer, out *Query) {
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
-					var v3 interface{}
-					if m, ok := v3.(easyjson.Unmarshaler); ok {
+					var v4 interface{}
+					if m, ok := v4.(easyjson.Unmarshaler); ok {
 						m.UnmarshalEasyJSON(in)
-					} else if m, ok := v3.(json.Unmarshaler); ok {
+					} else if m, ok := v4.(json.Unmarshaler); ok {
 						_ = m.UnmarshalJSON(in.Raw())
 					} else {
-						v3 = in.Interface()
+						v4 = in.Interface()
 					}
-					(out.Filter)[key] = v3
+					(out.Filter)[key] = v4
 					in.WantComma()
 				}
 				in.Delim('}')
@@ -125,15 +148,15 @@ func easyjson4bc42f5bDecodeGithubComA8mRql(in *jlexer.Lexer, out *Query) {
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
-					var v4 interface{}
-					if m, ok := v4.(easyjson.Unmarshaler); ok {
+					var v5 interface{}
+					if m, ok := v5.(easyjson.Unmarshaler); ok {
 						m.UnmarshalEasyJSON(in)
-					} else if m, ok := v4.(json.Unmarshaler); ok {
+					} else if m, ok := v5.(json.Unmarshaler); ok {
 						_ = m.UnmarshalJSON(in.Raw())
 					} else {
-						v4 = in.Interface()
+						v5 = in.Interface()
 					}
-					(out.Aggregate)[key] = v4
+					(out.Aggregate)[key] = v5
 					in.WantComma()
 				}
 				in.Delim('}')
@@ -154,9 +177,9 @@ func easyjson4bc42f5bDecodeGithubComA8mRql(in *jlexer.Lexer, out *Query) {
 					out.Group = (out.Group)[:0]
 				}
 				for !in.IsDelim(']') {
-					var v5 string
-					v5 = string(in.String())
-					out.Group = append(out.Group, v5)
+					var v6 string
+					v6 = string(in.String())
+					out.Group = append(out.Group, v6)
 					in.WantComma()
 				}
 				in.Delim(']')
@@ -205,11 +228,30 @@ func easyjson4bc42f5bEncodeGithubComA8mRql(out *jwriter.Writer, in Query) {
 		}
 		{
 			out.RawByte('[')
-			for v6, v7 := range in.Select {
-				if v6 > 0 {
+			for v7, v8 := range in.Select {
+				if v7 > 0 {
 					out.RawByte(',')
 				}
-				out.String(string(v7))
+				out.String(string(v8))
+			}
+			out.RawByte(']')
+		}
+	}
+	if len(in.Update) != 0 {
+		const prefix string = ",\"update\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		{
+			out.RawByte('[')
+			for v9, v10 := range in.Update {
+				if v9 > 0 {
+					out.RawByte(',')
+				}
+				out.String(string(v10))
 			}
 			out.RawByte(']')
 		}
@@ -224,11 +266,11 @@ func easyjson4bc42f5bEncodeGithubComA8mRql(out *jwriter.Writer, in Query) {
 		}
 		{
 			out.RawByte('[')
-			for v8, v9 := range in.Sort {
-				if v8 > 0 {
+			for v11, v12 := range in.Sort {
+				if v11 > 0 {
 					out.RawByte(',')
 				}
-				out.String(string(v9))
+				out.String(string(v12))
 			}
 			out.RawByte(']')
 		}
@@ -243,21 +285,21 @@ func easyjson4bc42f5bEncodeGithubComA8mRql(out *jwriter.Writer, in Query) {
 		}
 		{
 			out.RawByte('{')
-			v10First := true
-			for v10Name, v10Value := range in.Filter {
-				if v10First {
-					v10First = false
+			v13First := true
+			for v13Name, v13Value := range in.Filter {
+				if v13First {
+					v13First = false
 				} else {
 					out.RawByte(',')
 				}
-				out.String(string(v10Name))
+				out.String(string(v13Name))
 				out.RawByte(':')
-				if m, ok := v10Value.(easyjson.Marshaler); ok {
+				if m, ok := v13Value.(easyjson.Marshaler); ok {
 					m.MarshalEasyJSON(out)
-				} else if m, ok := v10Value.(json.Marshaler); ok {
+				} else if m, ok := v13Value.(json.Marshaler); ok {
 					out.Raw(m.MarshalJSON())
 				} else {
-					out.Raw(json.Marshal(v10Value))
+					out.Raw(json.Marshal(v13Value))
 				}
 			}
 			out.RawByte('}')
@@ -273,21 +315,21 @@ func easyjson4bc42f5bEncodeGithubComA8mRql(out *jwriter.Writer, in Query) {
 		}
 		{
 			out.RawByte('{')
-			v11First := true
-			for v11Name, v11Value := range in.Aggregate {
-				if v11First {
-					v11First = false
+			v14First := true
+			for v14Name, v14Value := range in.Aggregate {
+				if v14First {
+					v14First = false
 				} else {
 					out.RawByte(',')
 				}
-				out.String(string(v11Name))
+				out.String(string(v14Name))
 				out.RawByte(':')
-				if m, ok := v11Value.(easyjson.Marshaler); ok {
+				if m, ok := v14Value.(easyjson.Marshaler); ok {
 					m.MarshalEasyJSON(out)
-				} else if m, ok := v11Value.(json.Marshaler); ok {
+				} else if m, ok := v14Value.(json.Marshaler); ok {
 					out.Raw(m.MarshalJSON())
 				} else {
-					out.Raw(json.Marshal(v11Value))
+					out.Raw(json.Marshal(v14Value))
 				}
 			}
 			out.RawByte('}')
@@ -303,11 +345,11 @@ func easyjson4bc42f5bEncodeGithubComA8mRql(out *jwriter.Writer, in Query) {
 		}
 		{
 			out.RawByte('[')
-			for v12, v13 := range in.Group {
-				if v12 > 0 {
+			for v15, v16 := range in.Group {
+				if v15 > 0 {
 					out.RawByte(',')
 				}
-				out.String(string(v13))
+				out.String(string(v16))
 			}
 			out.RawByte(']')
 		}

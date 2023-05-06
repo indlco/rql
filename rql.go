@@ -33,6 +33,14 @@ type Query struct {
 	//	}`))
 	//
 	Select []string `json:"select,omitempty"`
+	// Select contains the list of expressions define the value for the `UPDATE` clause.
+	// For example:
+	//
+	//	params, err := p.Parse([]byte(`{
+	//		"update": ["name", "age"]
+	//	}`))
+	//
+	Update []string `json:"update,omitempty"`
 	// Sort contains list of expressions define the value for the `ORDER BY` clause.
 	// In order to return the rows in descending order you can prefix your field with `-`.
 	// For example:
@@ -108,6 +116,8 @@ type Params struct {
 	Offset int
 	// Select contains the expression for the `SELECT` clause defined in the Query. If group is not empty, values are automatically replaced by the group string and the aggregate string.
 	Select []string
+	// Select contains the expression for the `UPDATE` clause defined in the Query.
+	Update []string
 	// Sort used as a parameter for the `ORDER BY` clause. For example, "age desc, name".
 	Sort []string
 	// FilterExp and FilterArgs come together and used as a parameters for the `WHERE` clause.
@@ -147,6 +157,8 @@ type field struct {
 	Groupable bool
 	// Has a "aggregate" option in the tag.
 	Aggregateable bool
+	// Has a "update" option in the tag.
+	Updateable bool
 	// All supported operators for this field.
 	FilterOps map[string]bool
 	// Validation for the type. for example, unit8 greater than or equal to 0.
@@ -262,8 +274,9 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 			parseStatePool.Put(aps)
 		}
 	} else {
-		pr.Select = p.validateSelect(q.Select)
+		pr.Select = p.validateColumnNames(q.Select, "select")
 	}
+	pr.Update = p.validateColumnNames(q.Update, "update")
 	parseStatePool.Put(ps)
 	return
 }
@@ -344,6 +357,8 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			f.Groupable = true
 		case s == "aggregate":
 			f.Aggregateable = true
+		case s == "update":
+			f.Updateable = true
 		case strings.HasPrefix(opt, "column"):
 			f.Name = strings.TrimPrefix(opt, "column=")
 		case strings.HasPrefix(opt, "layout"):
@@ -446,9 +461,12 @@ func (p *Parser) newParseState() (ps *parseState) {
 	return
 }
 
-func (p *Parser) validateSelect(fields []string) []string {
+func (p *Parser) validateColumnNames(fields []string, typ string) []string {
 	for _, field := range fields {
 		expect(p.fields[field] != nil, "unrecognized field %q for select", field)
+		if typ == "update" {
+			expect(p.fields[field].Updateable, "update on field %q not allowed", field)
+		}
 	}
 	return fields
 }

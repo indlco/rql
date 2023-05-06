@@ -590,6 +590,40 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "update one",
+			conf: Config{
+				Model: struct {
+					Age  int    `rql:"filter,sort,update"`
+					Name string `rql:"filter,sort,update"`
+				}{},
+				DefaultLimit: 25,
+			},
+			input: []byte(`{
+							"update": ["name"]
+						}`),
+			wantOut: &Params{
+				Limit:  25,
+				Update: []string{"name"},
+			},
+		},
+		{
+			name: "update many",
+			conf: Config{
+				Model: struct {
+					Age  int    `rql:"filter,sort,update"`
+					Name string `rql:"filter,sort,update"`
+				}{},
+				DefaultLimit: 25,
+			},
+			input: []byte(`{
+							"update": ["name", "age"]
+						}`),
+			wantOut: &Params{
+				Limit:  25,
+				Update: []string{"name", "age"},
+			},
+		},
+		{
 			name: "custom column name",
 			conf: Config{
 				Model: struct {
