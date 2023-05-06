@@ -22,8 +22,9 @@ const (
 	GT    = Op("gt")    // >
 	LTE   = Op("lte")   // <=
 	GTE   = Op("gte")   // >=
-	LIKE  = Op("like")  // LIKE "PATTERN"
-	ILIKE = Op("ilike") // LIKE "PATTERN"
+	IN    = Op("in")    // IN "PATTERN"
+	LIKE  = Op("like")  // LIKE "PATTERN" (case sensitive LIKE)
+	ILIKE = Op("ilike") // ILIKE "PATTERN" (case insensitive LIKE)
 	NOT   = Op("not")   // disjunction
 	OR    = Op("or")    // disjunction
 	AND   = Op("and")   // conjunction
@@ -61,6 +62,7 @@ var (
 		GT:    ">",
 		LTE:   "<=",
 		GTE:   ">=",
+		IN:    "IN",
 		LIKE:  "LIKE",
 		ILIKE: "ILIKE",
 		NOT:   "NOT",
@@ -142,9 +144,6 @@ type Config struct {
 	// LimitMaxValue is the upper boundary for the limit field. User will get an error if the given value is greater
 	// than this value. It defaults to 100.
 	LimitMaxValue int
-	// DefaultOffset is the default value for the `Offset` field that returns when no offset supplied by the caller.
-	// It defaults to 0.
-	DefaultOffset int
 	// DefaultSort is the default value for the 'Sort' field that returns when no sort expression is supplied by the caller.
 	// It defaults to an empty string slice.
 	DefaultSort []string

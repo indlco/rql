@@ -1,6 +1,7 @@
 package rql
 
 import (
+	"bytes"
 	"database/sql"
 	"reflect"
 	"strings"
@@ -136,29 +137,29 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"name": "foo",
-								"age": 12,
-								"$or": [
-									{ "address": "DC" },
-									{ "address": "Marvel" }
-								],
-								"$and": [
-									{ "age": { "$neq": 10} },
-									{ "age": { "$neq": 20} },
-									{ "$or": [{ "age": 11 }, {"age": 10}] }
-								],
-								"$not": [
-									{ "age": { "$neq": 10} },
-									{ "age": { "$neq": 20} },
-									{ "$or": [{ "age": 11 }, {"age": 10}] }
-								]
-							}
-						}`),
+								"filter": {
+									"name": "foo",
+									"age": 12,
+									"$or": [
+										{ "address": "DC" },
+										{ "address": "Marvel" }
+									],
+									"$and": [
+										{ "age": { "$neq": 10} },
+										{ "age": { "$neq": 20} },
+										{ "$or": [{ "age": 11 }, {"age": 10}] }
+									],
+									"$not": [
+										{ "age": { "$neq": 10} },
+										{ "age": { "$neq": 20} },
+										{ "$or": [{ "age": 11 }, {"age": 10}] }
+									]
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
-				FilterExp:  "name = ? AND age = ? AND (address = ? OR address = ?) AND (age <> ? AND age <> ? AND (age = ? OR age = ?))",
-				FilterArgs: []interface{}{"foo", 12, "DC", "Marvel", 10, 20, 11, 10},
+				FilterExp:  "name = ? AND age = ? AND (address = ? OR address = ?) AND (age <> ? AND age <> ? AND (age = ? OR age = ?)) AND NOT (age <> ? AND age <> ? AND (age = ? OR age = ?))",
+				FilterArgs: []interface{}{"foo", 12, "DC", "Marvel", 10, 20, 11, 10, 10, 20, 11, 10},
 			},
 		},
 		{
@@ -174,15 +175,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"name": "foo",
-								"age": 12,
-								"$or": [
-									{ "address_name": "DC" },
-									{ "address_name": "Marvel" }
-								]
-							}
-						}`),
+								"filter": {
+									"name": "foo",
+									"age": 12,
+									"$or": [
+										{ "address_name": "DC" },
+										{ "address_name": "Marvel" }
+									]
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address_name = ? OR address_name = ?)",
@@ -203,15 +204,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"name": "foo",
-								"age": 12,
-								"$or": [
-									{ "address.name": "DC" },
-									{ "address.name": "Marvel" }
-								]
-							}
-						}`),
+								"filter": {
+									"name": "foo",
+									"age": 12,
+									"$or": [
+										{ "address.name": "DC" },
+										{ "address.name": "Marvel" }
+									]
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address_name = ? OR address_name = ?)",
@@ -235,15 +236,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"name": "foo",
-								"age": 12,
-								"$or": [
-									{ "address": "DC" },
-									{ "address": "Marvel" }
-								]
-							}
-						}`),
+								"filter": {
+									"name": "foo",
+									"age": 12,
+									"$or": [
+										{ "address": "DC" },
+										{ "address": "Marvel" }
+									]
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "name = ? AND age = ? AND (address = ? OR address = ?)",
@@ -278,11 +279,11 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"address": "foo",
-								"age": 12.5
-							}
-						}`),
+								"filter": {
+									"address": "foo",
+									"age": 12.5
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address = ? AND age = ?",
@@ -302,14 +303,14 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"bool": true,
-								"int8": 1,
-								"uint8": 1,
-								"null_bool": true,
-								"ptr_null_bool": true
-							}
-						}`),
+								"filter": {
+									"bool": true,
+									"int8": 1,
+									"uint8": 1,
+									"null_bool": true,
+									"ptr_null_bool": true
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "bool = ? AND int8 = ? AND uint8 = ? AND null_bool = ? AND ptr_null_bool = ?",
@@ -330,15 +331,15 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"null_int64": 1,
-								"ptr_null_int64": 1,
-								"null_float64": 1,
-								"ptr_null_float64": 1,
-								"null_string": "",
-								"ptr_null_string": ""
-							}
-						}`),
+								"filter": {
+									"null_int64": 1,
+									"ptr_null_int64": 1,
+									"null_float64": 1,
+									"ptr_null_float64": 1,
+									"null_string": "",
+									"ptr_null_string": ""
+								}
+							}`),
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "null_int64 = ? AND ptr_null_int64 = ? AND null_float64 = ? AND ptr_null_float64 = ? AND null_string = ? AND ptr_null_string = ?",
@@ -360,13 +361,13 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 25,
 			},
 			input: []byte(`{
-							"filter": {
-								"created_at": "2018-01-14T06:05:48.839Z",
-								"updated_at": "2018-01-14T06:05:48.839Z",
-								"swagger_date": "2018-01-14T06:05:48.839Z",
-								"ptr_swagger_date": "2018-01-14T06:05:48.839Z"
-							}
-						}`),
+								"filter": {
+									"created_at": "2018-01-14T06:05:48.839Z",
+									"updated_at": "2018-01-14T06:05:48.839Z",
+									"swagger_date": "2018-01-14T06:05:48.839Z",
+									"ptr_swagger_date": "2018-01-14T06:05:48.839Z"
+								}
+							}`),
 			wantOut: &Params{
 				Limit:     25,
 				FilterExp: "created_at = ? AND updated_at = ? AND swagger_date = ? AND ptr_swagger_date = ?",
@@ -392,7 +393,7 @@ func TestParse(t *testing.T) {
 							"filter": {
 								"age": { "$gt": 10 },
 								"name": { "$like": "%foo%" },
-								"$and": { "name": {"$ilike": "%foo%" } },
+								"$and": [ {"name": {"$ilike": "%foo%" }} ],
 								"$or": [
 									{ "address": { "$eq": "DC" } },
 									{ "address": { "$neq": "Marvel" } }
@@ -401,8 +402,8 @@ func TestParse(t *testing.T) {
 						}`),
 			wantOut: &Params{
 				Limit:      25,
-				FilterExp:  "age > ? AND name LIKE ? AND (name ILIKE ?) AND (address = ? OR address <> ?)",
-				FilterArgs: []interface{}{10, "%foo%", "DC", "Marvel"},
+				FilterExp:  "age > ? AND name LIKE ? AND name ILIKE ? AND (address = ? OR address <> ?)",
+				FilterArgs: []interface{}{10, "%foo%", "%foo%", "DC", "Marvel"},
 			},
 		},
 		{
@@ -465,7 +466,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"address_name", "address_zip_code desc", "age asc"},
+				Sort:       []string{"lower(address_name)", "lower(address_zip_code) desc", "lower(age) asc"},
 			},
 		},
 		{
@@ -493,7 +494,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"address_name", "address_zip_code desc", "age asc"},
+				Sort:       []string{"lower(address_name)", "lower(address_zip_code) desc", "lower(age) asc"},
 			},
 		},
 		{
@@ -522,7 +523,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"name desc"},
+				Sort:       []string{"lower(name) desc"},
 			},
 		},
 		{
@@ -551,7 +552,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"age desc"},
+				Sort:       []string{"lower(age) desc"},
 			},
 		},
 		{
@@ -606,7 +607,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "full_name = ?",
 				FilterArgs: []interface{}{"a8m"},
-				Select:     []string{"full_name"},
+				Sort:       []string{"lower(full_name)"},
 			},
 		},
 		{
@@ -986,6 +987,25 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "column in (?,?,?)",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  int    `rql:"filter,group,aggregate"`
+				}{},
+			},
+			input: []byte(`{
+			"filter": {
+				"name": { "$in": ["peter","hans","jakob"] }
+			}
+			}`),
+			wantOut: &Params{
+				FilterExp:  "name IN (?,?,?)",
+				FilterArgs: []interface{}{"peter", "hans", "jakob"},
+				Limit:      25,
+			},
+		},
+		{
 			name: "invalid offset",
 			conf: Config{
 				Model: struct{}{},
@@ -1052,7 +1072,7 @@ func assertParams(t *testing.T, got *Params, want *Params) {
 	if !EqualUnorderedStringSlice(got.Select, want.Select) {
 		t.Fatalf("select: got: %q want %q", got.Select, want.Select)
 	}
-	if !equalExp(got.FilterExp, want.FilterExp) || !equalExp(want.FilterExp, got.FilterExp) {
+	if !equalExp(got.FilterExp.String(), want.FilterExp.String()) || !equalExp(want.FilterExp.String(), got.FilterExp.String()) {
 		t.Fatalf("filter expr:\n\tgot: %q\n\twant %q", got.FilterExp, want.FilterExp)
 	}
 	if !equalArgs(got.FilterArgs, want.FilterArgs) || !equalArgs(want.FilterArgs, got.FilterArgs) {
@@ -1107,13 +1127,31 @@ func equalExp(e1, e2 string) bool {
 func split(e string) []string {
 	var s []string
 	for len(e) > 0 {
-		if e[0] == '(' {
-			end := strings.LastIndexByte(e, ')') + 1
+		if e[0] == '(' || e[0:3] == "NOT" {
+			end := 0
+			cnt := 0
+			for i := 0; i < len(e); i++ {
+				if e[i] == '(' {
+					cnt++
+				} else if e[i] == ')' {
+					cnt--
+				}
+				if i > 4 && cnt == 0 {
+					end = i + 1
+					break
+				}
+			}
 			s = append(s, e[:end])
 			e = e[end:]
 		} else {
 			end := strings.IndexByte(e, '?') + 1
-			s = append(s, e[:end])
+			for {
+				if end >= len(e) || !bytes.ContainsAny([]byte{e[end]}, "?,)") {
+					break
+				}
+				end++
+			}
+			s = append(s, strings.ReplaceAll(e[:end], ", ", ","))
 			e = e[end:]
 		}
 		e = strings.TrimPrefix(e, " AND ")

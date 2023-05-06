@@ -118,11 +118,13 @@ type Params struct {
 	//
 	//	2. Exp: "name = ? AND age >= ?"
 	// 	   Args: "a8m", 22
-	FilterExp  string
+	FilterExp  ExpString
 	FilterArgs []interface{}
 	// GroupBy contains the expression for the `GROUP BY` clause defined in the Query. Values are automatically added to select string.
 	Group []string
 }
+
+type ExpString string
 
 // ParseError is type of error returned when there is a parsing problem.
 type ParseError struct {
@@ -199,15 +201,23 @@ func (p *Parser) Parse(b []byte) (pr *Params, err error) {
 		return nil, err
 	}
 
-	// adapt for postgres
-	cnt := strings.Count(r.FilterExp, " ?")
-	for i := 1; i <= cnt; i++ {
-		r.FilterExp = strings.Replace(r.FilterExp, " ?", fmt.Sprintf(" $%v", i), 1)
-	}
-
 	// row group queries
 
 	return r, nil
+}
+
+func (e ExpString) String() string {
+	return string(e)
+}
+
+func (e ExpString) PostgresString() string {
+	// adapt for postgres
+	newExp := e.String()
+	cnt := strings.Count(newExp, " ?")
+	for i := 1; i <= cnt; i++ {
+		newExp = strings.Replace(newExp, " ?", fmt.Sprintf(" $%v", i), 1)
+	}
+	return newExp
 }
 
 // ParseQuery parses the given struct into a Param object. It returns an error
@@ -226,9 +236,6 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	pr = &Params{
 		Limit: p.DefaultLimit,
 	}
-	if q.Offset < 0 && p.DefaultOffset > 0 {
-		q.Offset = p.DefaultOffset
-	}
 	expect(q.Offset >= 0, "offset must be greater than or equal to 0")
 	pr.Offset = q.Offset
 	if q.Limit != 0 {
@@ -237,7 +244,7 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	}
 	ps := p.newParseState()
 	ps.and(q.Filter)
-	pr.FilterExp = ps.String()
+	pr.FilterExp = ExpString(ps.String())
 	pr.FilterArgs = ps.values
 	pr.Sort = p.sort(q.Sort)
 	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 {
@@ -362,47 +369,47 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	switch typ := indirect(sf.Type); typ.Kind() {
 	case reflect.Bool:
 		f.ValidateFn = validateBool
-		filterOps = append(filterOps, EQ, NEQ)
+		filterOps = append(filterOps, EQ, NEQ, IN)
 	case reflect.String:
 		f.ValidateFn = validateString
-		filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE, LIKE, ILIKE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, LIKE, ILIKE)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		f.ValidateFn = validateInt
 		f.CovertFn = convertInt
-		filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		f.ValidateFn = validateUInt
 		f.CovertFn = convertInt
-		filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 	case reflect.Float32, reflect.Float64:
 		f.ValidateFn = validateFloat
-		filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 	case reflect.Struct:
 		switch v := reflect.Zero(typ); v.Interface().(type) {
 		case sql.NullBool:
 			f.ValidateFn = validateBool
-			filterOps = append(filterOps, EQ, NEQ)
+			filterOps = append(filterOps, EQ, NEQ, IN)
 		case sql.NullString:
 			f.ValidateFn = validateString
-			filterOps = append(filterOps, EQ, NEQ)
+			filterOps = append(filterOps, EQ, NEQ, IN)
 		case sql.NullInt64:
 			f.ValidateFn = validateInt
 			f.CovertFn = convertInt
-			filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 		case sql.NullFloat64:
 			f.ValidateFn = validateFloat
-			filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 		case time.Time:
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
-			filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 		default:
 			if !v.Type().ConvertibleTo(reflect.TypeOf(time.Time{})) {
 				return fmt.Errorf("rql: field type for %q is not supported", sf.Name)
 			}
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
-			filterOps = append(filterOps, EQ, NEQ, LT, LTE, GT, GTE)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 		}
 	default:
 		return fmt.Errorf("rql: field type for %q is not supported", sf.Name)
@@ -611,9 +618,21 @@ func (p *parseState) field(f *field, v interface{}) {
 			p.WriteString(" AND ")
 		}
 		expect(f.FilterOps[opName], "can not apply op %q on field %q", opName, f.Name)
-		must(f.ValidateFn(opVal), "invalid datatype or format for field %q", f.Name)
-		p.WriteString(p.fmtOp(f.Name, Op(opName[1:])))
-		p.values = append(p.values, f.CovertFn(opVal))
+		if opName == p.op(IN) {
+			if valArr, ok := opVal.([]interface{}); !ok {
+				expect(false, "invalid datatype for field %q", f.Name)
+			} else {
+				for _, inVal := range valArr {
+					must(f.ValidateFn(inVal), "invalid datatype or format in array of field %q", f.Name)
+					p.values = append(p.values, f.CovertFn(inVal))
+				}
+				p.WriteString(p.fmtOp(f.Name, Op(opName[1:]), len(valArr)))
+			}
+		} else {
+			must(f.ValidateFn(opVal), "invalid datatype or format for field %q", f.Name)
+			p.WriteString(p.fmtOp(f.Name, Op(opName[1:])))
+			p.values = append(p.values, f.CovertFn(opVal))
+		}
 		i++
 	}
 	if len(terms) > 1 {
@@ -623,8 +642,15 @@ func (p *parseState) field(f *field, v interface{}) {
 
 // fmtOp create a string for the operation with a placeholder.
 // for example: "name = ?", or "age >= ?".
-func (p *Parser) fmtOp(field string, op Op) string {
+func (p *Parser) fmtOp(field string, op Op, length ...int) string {
 	colName := p.colName(field)
+	if op == IN && len(length) > 0 && length[0] > 0 {
+		args := make([]string, 0, length[0])
+		for i := 0; i < length[0]; i++ {
+			args = append(args, "?")
+		}
+		return colName + " " + op.SQL() + " (" + strings.Join(args, ",") + ")"
+	}
 	return colName + " " + op.SQL() + " ?"
 }
 
