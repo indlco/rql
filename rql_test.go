@@ -708,6 +708,24 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "cleanedup sort",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,sort,group"`
+					Age  int    `rql:"filter,sort,group,aggregate"`
+				}{},
+			},
+			input: []byte(`{
+							"group": ["name"],
+							"sort": ["-name"]
+						}`),
+			wantOut: &Params{
+				Limit:  25,
+				Sort:   []string{"lower(name) desc"},
+				Select: []string{"name"},
+			},
+		},
+		{
 			name: "mismatch time unix layout",
 			conf: Config{
 				Model: new(struct {

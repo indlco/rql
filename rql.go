@@ -260,10 +260,6 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	ps.and(q.Filter)
 	pr.FilterExp = ExpString(ps.String())
 	pr.FilterArgs = ps.values
-	pr.Sort = p.sort(q.Sort)
-	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 && len(q.Group) == 0 {
-		pr.Sort = p.sort(p.DefaultSort)
-	}
 	pr.Group = p.group(q.Group)
 	if len(pr.Group) > 0 {
 		pr.Select = append(pr.Select, pr.Group...)
@@ -275,9 +271,12 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 			}
 			parseStatePool.Put(aps)
 		}
-		pr.Sort = removeInvalidColumns(q.Sort, q.Group)
 	} else {
 		pr.Select = p.validateColumnNames(q.Select, "select")
+	}
+	pr.Sort = p.sort(q.Sort)
+	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 && len(pr.Group) == 0 {
+		pr.Sort = p.sort(p.DefaultSort)
 	}
 	pr.Update = p.validateColumnNames(q.Update, "update")
 	parseStatePool.Put(ps)
@@ -474,25 +473,6 @@ func (p *Parser) validateColumnNames(fields []string, typ string) []string {
 		}
 	}
 	return fields
-}
-
-func removeInvalidColumns(input []string, model []string) []string {
-	validatedFields := []string{}
-	for _, field := range input {
-		if arrayContains(model, field) {
-			validatedFields = append(validatedFields, field)
-		}
-	}
-	return validatedFields
-}
-
-func arrayContains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }
 
 // sort build the sort clause.
