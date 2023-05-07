@@ -466,7 +466,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(address_name)", "lower(address_zip_code) desc", "lower(age) asc"},
+				Sort:       []string{"lower(address_name)", "address_zip_code desc", "age asc"},
 			},
 		},
 		{
@@ -494,7 +494,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(address_name)", "lower(address_zip_code) desc", "lower(age) asc"},
+				Sort:       []string{"lower(address_name)", "address_zip_code desc", "age asc"},
 			},
 		},
 		{
@@ -552,7 +552,7 @@ func TestParse(t *testing.T) {
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(age) desc"},
+				Sort:       []string{"age desc"},
 			},
 		},
 		{

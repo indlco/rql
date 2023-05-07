@@ -152,6 +152,8 @@ type field struct {
 	// Has a "sort" option in the tag.
 	Sortable bool
 	// Has a "filter" option in the tag.
+	SortableCaseInsensitive bool
+	// Has a "filter" option in the tag.
 	Filterable bool
 	// Has a "group" option in the tag.
 	Groupable bool
@@ -259,7 +261,7 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	pr.FilterExp = ExpString(ps.String())
 	pr.FilterArgs = ps.values
 	pr.Sort = p.sort(q.Sort)
-	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 {
+	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 && len(q.Group) == 0 {
 		pr.Sort = p.sort(p.DefaultSort)
 	}
 	pr.Group = p.group(q.Group)
@@ -273,6 +275,7 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 			}
 			parseStatePool.Put(aps)
 		}
+		pr.Sort = removeInvalidColumns(q.Sort, q.Group)
 	} else {
 		pr.Select = p.validateColumnNames(q.Select, "select")
 	}
@@ -387,6 +390,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		filterOps = append(filterOps, EQ, NEQ, IN)
 	case reflect.String:
 		f.ValidateFn = validateString
+		f.SortableCaseInsensitive = true
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, LIKE, ILIKE)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		f.ValidateFn = validateInt
@@ -406,6 +410,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			filterOps = append(filterOps, EQ, NEQ, IN)
 		case sql.NullString:
 			f.ValidateFn = validateString
+			f.SortableCaseInsensitive = true
 			filterOps = append(filterOps, EQ, NEQ, IN)
 		case sql.NullInt64:
 			f.ValidateFn = validateInt
@@ -471,6 +476,25 @@ func (p *Parser) validateColumnNames(fields []string, typ string) []string {
 	return fields
 }
 
+func removeInvalidColumns(input []string, model []string) []string {
+	validatedFields := []string{}
+	for _, field := range input {
+		if arrayContains(model, field) {
+			validatedFields = append(validatedFields, field)
+		}
+	}
+	return validatedFields
+}
+
+func arrayContains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
 // sort build the sort clause.
 func (p *Parser) sort(fields []string) []string {
 	sortParams := make([]string, len(fields))
@@ -484,7 +508,12 @@ func (p *Parser) sort(fields []string) []string {
 		}
 		expect(p.fields[field] != nil, "unrecognized key %q for sorting", field)
 		expect(p.fields[field].Sortable, "field %q is not sortable", field)
-		colName := fmt.Sprintf("lower(%v)", p.colName(field))
+		colName := ""
+		if p.fields[field].SortableCaseInsensitive {
+			colName = fmt.Sprintf("lower(%v)", p.colName(field))
+		} else {
+			colName = fmt.Sprintf("%v", p.colName(field))
+		}
 		if orderBy != "" {
 			colName += " " + orderBy
 		}
@@ -494,15 +523,16 @@ func (p *Parser) sort(fields []string) []string {
 }
 
 func (p *Parser) group(fields []string) []string {
-	sortParams := make([]string, len(fields))
+	groupParams := make([]string, len(fields))
 	for i, field := range fields {
 		expect(field != "", "group field can not be empty")
 		expect(p.fields[field] != nil, "unrecognized key %q for grouping", field)
 		expect(p.fields[field].Groupable, "field %q is not groupable", field)
 		colName := fmt.Sprintf("%v", p.colName(field))
-		sortParams[i] = colName
+		groupParams[i] = colName
 	}
-	return sortParams
+
+	return groupParams
 }
 
 func (p *parseState) aggregate(f map[string]interface{}) {
