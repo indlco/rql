@@ -424,14 +424,14 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 		default:
 			if !v.Type().ConvertibleTo(reflect.TypeOf(time.Time{})) {
-				return fmt.Errorf("rql: field type for %q is not supported", sf.Name)
+				fmt.Printf("rql: field type for %q is not supported - only allowed for select", sf.Name)
 			}
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
 		}
 	default:
-		return fmt.Errorf("rql: field type for %q is not supported", sf.Name)
+		fmt.Printf("rql: field type for %q is not supported - only allowed for select", sf.Name)
 	}
 	for _, op := range filterOps {
 		f.FilterOps[p.op(op)] = true
