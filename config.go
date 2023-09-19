@@ -147,6 +147,9 @@ type Config struct {
 	// DefaultSort is the default value for the 'Sort' field that returns when no sort expression is supplied by the caller.
 	// It defaults to an empty string slice.
 	DefaultSort []string
+
+	// If true logs won't be printed to stdout
+	DoNotLog bool
 }
 
 // defaults sets the default configuration of Config.
