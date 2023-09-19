@@ -334,6 +334,12 @@ func (p *Parser) init() error {
 			}
 		case f.Anonymous:
 			p.Log("ignore embedded field %q that is not struct type", f.Name)
+		default:
+			// allow field without tag to be selected.
+			if err := p.parseField(f); err != nil {
+				return err
+			}
+
 		}
 	}
 	return nil
@@ -378,6 +384,8 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			}
 		case s == "-" || s == "ignore":
 			return nil
+		case s == "":
+			// when tag is missing allow select
 		default:
 			p.Log("Ignoring unknown option %q in struct tag", opt)
 		}
