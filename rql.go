@@ -330,7 +330,9 @@ func (p *Parser) init() error {
 				if !f.Anonymous {
 					f1.Name = f.Name + p.FieldSep + f1.Name
 				}
-				l.PushFront(f1)
+				if f.Name != "Edges" {
+					l.PushFront(f1)
+				}
 			}
 		case f.Anonymous:
 			p.Log("ignore embedded field %q that is not struct type", f.Name)
