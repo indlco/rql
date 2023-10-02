@@ -224,12 +224,12 @@ func (e ExpString) String() string {
 	return string(e)
 }
 
-func (e ExpString) PostgresString() string {
+func (e ExpString) PostgresString(offset int) string {
 	// adapt for postgres
 	newExp := e.String()
 	cnt := strings.Count(newExp, "?")
 	for i := 1; i <= cnt; i++ {
-		newExp = strings.Replace(newExp, "?", fmt.Sprintf("$%v", i), 1)
+		newExp = strings.Replace(newExp, "?", fmt.Sprintf("$%v", i+offset), 1)
 	}
 	return newExp
 }
