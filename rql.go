@@ -397,6 +397,9 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	case reflect.Bool:
 		f.ValidateFn = validateBool
 		filterOps = append(filterOps, EQ, NEQ, IN)
+	case reflect.Array, reflect.Slice:
+		f.ValidateFn = validateString
+		filterOps = append(filterOps, EQ, NEQ)
 	case reflect.String:
 		f.ValidateFn = validateString
 		f.SortableCaseInsensitive = true
@@ -417,6 +420,9 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		case sql.NullBool:
 			f.ValidateFn = validateBool
 			filterOps = append(filterOps, EQ, NEQ, IN)
+		case sql.NullByte:
+			f.ValidateFn = validateString
+			filterOps = append(filterOps, EQ, NEQ)
 		case sql.NullString:
 			f.ValidateFn = validateString
 			f.SortableCaseInsensitive = true
@@ -435,7 +441,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		default:
 			if !v.Type().ConvertibleTo(reflect.TypeOf(time.Time{})) {
 				if !p.Config.DoNotLog {
-					fmt.Printf("rql: field type for %q is not supported - only allowed for select\n", sf.Name)
+					fmt.Printf("rql: field type '%v' for %q is not supported - only allowed for select\n", typ.Kind(), sf.Name)
 				}
 			}
 			f.ValidateFn = validateTime(layout)
@@ -444,7 +450,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		}
 	default:
 		if !p.Config.DoNotLog {
-			fmt.Printf("rql: field type for %q is not supported - only allowed for select\n", sf.Name)
+			fmt.Printf("rql: field type '%v' for %q is not supported - only allowed for select\n", typ.Kind(), sf.Name)
 		}
 	}
 	for _, op := range filterOps {
