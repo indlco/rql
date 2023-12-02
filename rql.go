@@ -269,7 +269,12 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 
 	aps := p.newParseState()
 	aps.aggregate(q.Aggregate)
-	pr.Aggregate = strings.Split(aps.String(), ", ")
+	agg := strings.Split(aps.String(), ", ")
+	for _, a := range agg {
+		if a != "" {
+			pr.Aggregate = append(pr.Aggregate, a)
+		}
+	}
 
 	pr.Sort = p.sort(q.Sort)
 	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 && len(pr.Group) == 0 {
