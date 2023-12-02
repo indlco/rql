@@ -92,7 +92,7 @@ var (
 		ROUND: func(val string, options []string) string {
 			expect(val != "", "round requires a value")
 			if len(options) < 1 {
-				options = append(options, "0.01")
+				options = append(options, "0")
 			}
 			return fmt.Sprintf("ROUND(%v, %v)", val, options[0])
 		},
