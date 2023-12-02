@@ -116,7 +116,9 @@ type Params struct {
 	Offset int
 	// Select contains the expression for the `SELECT` clause defined in the Query. If group is not empty, values are automatically replaced by the group string and the aggregate string.
 	Select []string
-	// Select contains the expression for the `UPDATE` clause defined in the Query.
+	// Aggregate contains additional aggregated `SELECT` expressions that can be optionally appended to the select statement.
+	Aggregate []string
+	// Update contains the expression for the `UPDATE` clause defined in the Query.
 	Update []string
 	// Sort used as a parameter for the `ORDER BY` clause. For example, "age desc, name".
 	Sort []string
@@ -163,6 +165,8 @@ type field struct {
 	Updateable bool
 	// All supported operators for this field.
 	FilterOps map[string]bool
+	// ALl supported modifiers for this field.
+	ModifierOps map[string]bool
 	// Validation for the type. for example, unit8 greater than or equal to 0.
 	ValidateFn func(interface{}) error
 	// ConvertFn converts the given value to the type value.
@@ -261,24 +265,17 @@ func (p *Parser) ParseQuery(q *Query) (pr *Params, err error) {
 	pr.FilterExp = ExpString(ps.String())
 	pr.FilterArgs = ps.values
 	pr.Group = p.group(q.Group)
-	if len(pr.Group) > 0 {
-		pr.Select = append(pr.Select, pr.Group...)
-		if len(q.Aggregate) > 0 {
-			aps := p.newParseState()
-			aps.aggregate(q.Aggregate)
-			if v := strings.Split(aps.String(), ", "); len(v) > 0 {
-				pr.Select = append(pr.Select, v...)
-			}
-			parseStatePool.Put(aps)
-		}
-	} else {
-		pr.Select = p.validateColumnNames(q.Select, "select")
-	}
+	pr.Select = p.sel(q.Select)
+
+	aps := p.newParseState()
+	aps.aggregate(q.Aggregate)
+	pr.Aggregate = strings.Split(aps.String(), ", ")
+
 	pr.Sort = p.sort(q.Sort)
 	if len(pr.Sort) == 0 && len(p.DefaultSort) > 0 && len(pr.Group) == 0 {
 		pr.Sort = p.sort(p.DefaultSort)
 	}
-	pr.Update = p.validateColumnNames(q.Update, "update")
+	pr.Update = p.validateUpdateColumnNames(q.Update)
 	parseStatePool.Put(ps)
 	return
 }
@@ -351,9 +348,10 @@ func (p *Parser) init() error {
 // in the parser according to its type and the options that were set on the tag.
 func (p *Parser) parseField(sf reflect.StructField) error {
 	f := &field{
-		Name:      p.ColumnFn(sf.Name),
-		CovertFn:  valueFn,
-		FilterOps: make(map[string]bool),
+		Name:        p.ColumnFn(sf.Name),
+		CovertFn:    valueFn,
+		FilterOps:   make(map[string]bool),
+		ModifierOps: make(map[string]bool),
 	}
 	layout := time.RFC3339
 	opts := strings.Split(sf.Tag.Get(p.TagName), ",")
@@ -393,51 +391,64 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		}
 	}
 	var filterOps []Op
+	var modifierOps []Op
 	switch typ := indirect(sf.Type); typ.Kind() {
 	case reflect.Bool:
 		f.ValidateFn = validateBool
 		filterOps = append(filterOps, EQ, NEQ, IN)
+		modifierOps = append(modifierOps, COUNT)
 	case reflect.Array, reflect.Slice:
 		f.ValidateFn = validateString
 		filterOps = append(filterOps, EQ, NEQ)
+		// modifierOps = append(modifierOps, EQ)
 	case reflect.String:
 		f.ValidateFn = validateString
 		f.SortableCaseInsensitive = true
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, LIKE, ILIKE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		f.ValidateFn = validateInt
 		f.CovertFn = convertInt
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		f.ValidateFn = validateUInt
 		f.CovertFn = convertInt
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM)
 	case reflect.Float32, reflect.Float64:
 		f.ValidateFn = validateFloat
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM)
 	case reflect.Struct:
 		switch v := reflect.Zero(typ); v.Interface().(type) {
 		case sql.NullBool:
 			f.ValidateFn = validateBool
 			filterOps = append(filterOps, EQ, NEQ, IN)
+			modifierOps = append(modifierOps, COUNT)
 		case sql.NullByte:
 			f.ValidateFn = validateString
 			filterOps = append(filterOps, EQ, NEQ)
+			// modifierOps = append(modifierOps, EQ)
 		case sql.NullString:
 			f.ValidateFn = validateString
 			f.SortableCaseInsensitive = true
 			filterOps = append(filterOps, EQ, NEQ, IN)
+			modifierOps = append(modifierOps, MIN, MAX, COUNT)
 		case sql.NullInt64:
 			f.ValidateFn = validateInt
 			f.CovertFn = convertInt
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM)
 		case sql.NullFloat64:
 			f.ValidateFn = validateFloat
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM)
 		case time.Time:
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+			modifierOps = append(modifierOps, MIN, MAX, COUNT, TRUNC, EXTRACT)
 		default:
 			if !v.Type().ConvertibleTo(reflect.TypeOf(time.Time{})) {
 				if !p.Config.DoNotLog {
@@ -447,6 +458,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+			modifierOps = append(modifierOps, EQ)
 		}
 	default:
 		if !p.Config.DoNotLog {
@@ -455,6 +467,9 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	}
 	for _, op := range filterOps {
 		f.FilterOps[p.op(op)] = true
+	}
+	for _, op := range modifierOps {
+		f.ModifierOps[op.String()] = true
 	}
 	p.fields[f.Name] = f
 	return nil
@@ -485,12 +500,10 @@ func (p *Parser) newParseState() (ps *parseState) {
 	return
 }
 
-func (p *Parser) validateColumnNames(fields []string, typ string) []string {
+func (p *Parser) validateUpdateColumnNames(fields []string) []string {
 	for _, field := range fields {
 		expect(p.fields[field] != nil, "unrecognized field %q for select", field)
-		if typ == "update" {
-			expect(p.fields[field].Updateable, "update on field %q not allowed", field)
-		}
+		expect(p.fields[field].Updateable, "update on field %q not allowed", field)
 	}
 	return fields
 }
@@ -525,14 +538,57 @@ func (p *Parser) sort(fields []string) []string {
 func (p *Parser) group(fields []string) []string {
 	groupParams := make([]string, len(fields))
 	for i, field := range fields {
-		expect(field != "", "group field can not be empty")
-		expect(p.fields[field] != nil, "unrecognized key %q for grouping", field)
-		expect(p.fields[field].Groupable, "field %q is not groupable", field)
-		colName := fmt.Sprintf("%v", p.colName(field))
-		groupParams[i] = colName
+		_, finalCol := p.applyModifiers(field, "group")
+		groupParams[i] = finalCol
+	}
+	return groupParams
+}
+
+func (p *Parser) sel(fields []string) []string {
+	selectFields := make([]string, len(fields))
+	for i, field := range fields {
+		fieldName, finalCol := p.applyModifiers(field, "select")
+		if fieldName != finalCol {
+			finalCol = fmt.Sprintf("%v AS %v", finalCol, fieldName)
+		}
+		selectFields[i] = finalCol
 	}
 
-	return groupParams
+	return selectFields
+}
+
+func (p *Parser) applyModifiers(field string, typ string) (fieldName string, res string) {
+	split := strings.Split(field, "|")
+	fieldName = split[0]
+	res = fieldName
+	expect(fieldName != "", "group field can not be empty")
+	expect(p.fields[fieldName] != nil, "unrecognized key %q for grouping", fieldName)
+	expect(typ != "group" || p.fields[fieldName].Groupable, "field %q is not groupable", fieldName)
+
+	if len(split) > 1 {
+		if len(split) > 2 {
+			panic("currencly only one modifer allowed")
+		}
+
+		for m := 1; m < len(split); m++ {
+			res = p.applyOptions(res, split[m])
+		}
+	}
+	return fieldName, res
+}
+
+func (p *Parser) applyOptions(val, cmd string) (res string) {
+	split := strings.Split(cmd, ":")
+	modifier := split[0]
+	expect(modifier != "", "modifier command can not be empty")
+	expect(p.fields[val] != nil, "unrecognized key %q for grouping", val)
+	expect(p.fields[val].ModifierOps[modifier], "field %q has no modifier %v", val, modifier)
+
+	options := []string{}
+	if len(split) > 1 {
+		options = split[1:]
+	}
+	return Op(modifier).FormatModifier(val, options)
 }
 
 func (p *parseState) aggregate(f map[string]interface{}) {

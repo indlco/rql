@@ -1051,10 +1051,11 @@ func TestParse(t *testing.T) {
 					"count": { "$count": "age" }
 				}
 				}`),
+			wantErr: true, // not supported
 			wantOut: &Params{
-				Select: []string{"name", "age", "SUM(age) AS gold", "COUNT(age) AS count"},
-				Group:  []string{"name", "age"},
-				Limit:  10,
+				Aggregate: []string{"SUM(age) AS gold", "COUNT(age) AS count"},
+				Group:     []string{"name", "age"},
+				Limit:     10,
 			},
 		},
 		{
@@ -1107,6 +1108,23 @@ func TestParse(t *testing.T) {
 					"limit": 200
 				}`),
 			wantErr: true,
+		},
+		{
+			name: "column in (?,?,?)",
+			conf: Config{
+				Model: struct {
+					Name string    `rql:"filter,group"`
+					Age  int       `rql:"filter,group,aggregate"`
+					Date time.Time `rql:"filter,group"`
+				}{},
+			},
+			input: []byte(`{
+									"group": ["age|sum","name|max","date|trunc:month"]
+									}`),
+			wantOut: &Params{
+				Group: []string{"SUM(age)", "MAX(name)", "DATE_TRUNC('month', date)"},
+				Limit: 25,
+			},
 		},
 	}
 	for _, tt := range tests {

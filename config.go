@@ -2,8 +2,10 @@ package rql
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
+	"slices"
 )
 
 // Op is a filter operator used by rql.
@@ -14,25 +16,39 @@ func (o Op) SQL() string {
 	return opFormat[o]
 }
 
+func (o Op) FormatModifier(val string, options []string) string {
+	if v, ok := modFormatter[o]; ok {
+		return v(val, options)
+	}
+	return val
+}
+
+func (o Op) String() string {
+	return string(o)
+}
+
 // Operators that support by rql.
 const (
-	EQ    = Op("eq")    // =
-	NEQ   = Op("neq")   // <>
-	LT    = Op("lt")    // <
-	GT    = Op("gt")    // >
-	LTE   = Op("lte")   // <=
-	GTE   = Op("gte")   // >=
-	IN    = Op("in")    // IN "PATTERN"
-	LIKE  = Op("like")  // LIKE "PATTERN" (case sensitive LIKE)
-	ILIKE = Op("ilike") // ILIKE "PATTERN" (case insensitive LIKE)
-	NOT   = Op("not")   // disjunction
-	OR    = Op("or")    // disjunction
-	AND   = Op("and")   // conjunction
-	COUNT = Op("count") // aggregation
-	SUM   = Op("sum")   // aggregation
-	AVG   = Op("avg")   // aggregation
-	MIN   = Op("min")   // aggregation
-	MAX   = Op("max")   // aggregation
+	EQ      = Op("eq")      // =
+	NEQ     = Op("neq")     // <>
+	LT      = Op("lt")      // <
+	GT      = Op("gt")      // >
+	LTE     = Op("lte")     // <=
+	GTE     = Op("gte")     // >=
+	IN      = Op("in")      // IN "PATTERN"
+	LIKE    = Op("like")    // LIKE "PATTERN" (case sensitive LIKE)
+	ILIKE   = Op("ilike")   // ILIKE "PATTERN" (case insensitive LIKE)
+	NOT     = Op("not")     // disjunction
+	OR      = Op("or")      // disjunction
+	AND     = Op("and")     // conjunction
+	COUNT   = Op("count")   // aggregation
+	SUM     = Op("sum")     // aggregation
+	AVG     = Op("avg")     // aggregation
+	MIN     = Op("min")     // aggregation
+	MAX     = Op("max")     // aggregation
+	TRUNC   = Op("trunc")   // aggregation
+	EXTRACT = Op("extract") // aggregation
+	ROUND   = Op("round")   // aggregation
 )
 
 // Default values for configuration.
@@ -55,6 +71,56 @@ var (
 		'+': "asc",
 		'-': "desc",
 	}
+
+	// date|trunc:month
+	// date|trunc:day
+	// date|trunc:year
+	// date|round:0.01
+	modFormatter = map[Op]func(val string, options []string) string{
+		TRUNC: func(val string, options []string) string {
+			expect(val != "", "trunc requires a value")
+			expect(len(options) == 1, "trunc requires exactly one option")
+			expect(slices.Contains([]string{"day", "month", "year"}, options[0]), fmt.Sprintf("trunc has no option %v", options[0]))
+			return fmt.Sprintf("DATE_TRUNC('%v', %v)", options[0], val)
+		},
+		EXTRACT: func(val string, options []string) string {
+			expect(val != "", "truncate requires a value")
+			expect(len(options) == 1, "truncate requires exactly one option")
+			expect(slices.Contains([]string{"day", "month", "year"}, options[0]), fmt.Sprintf("truncate has no option %v", options[0]))
+			return fmt.Sprintf("EXTRACT(%v from %v)", options[0], val)
+		},
+		ROUND: func(val string, options []string) string {
+			expect(val != "", "round requires a value")
+			expect(len(options) == 1, "round requires exactly one option")
+			return fmt.Sprintf("ROUND(%v, %v)", val, options[0])
+		},
+		MIN: func(val string, options []string) string {
+			expect(val != "", "min requires a value")
+			expect(len(options) == 0, "min accepts no options")
+			return fmt.Sprintf("MIN(%v)", val)
+		},
+		MAX: func(val string, options []string) string {
+			expect(val != "", "max requires a value")
+			expect(len(options) == 0, "max accepts no options")
+			return fmt.Sprintf("MAX(%v)", val)
+		},
+		SUM: func(val string, options []string) string {
+			expect(val != "", "sum requires a value")
+			expect(len(options) == 0, "sum accepts no options")
+			return fmt.Sprintf("SUM(%v)", val)
+		},
+		COUNT: func(val string, options []string) string {
+			expect(val != "", "max requires a value")
+			expect(len(options) == 0, "max accepts no options")
+			return fmt.Sprintf("COUNT(%v)", val)
+		},
+		AVG: func(val string, options []string) string {
+			expect(val != "", "max requires a value")
+			expect(options != nil || len(options) != 0, "max accepts no options")
+			return fmt.Sprintf("AVG(%v)", val)
+		},
+	}
+
 	opFormat = map[Op]string{
 		EQ:    "=",
 		NEQ:   "<>",
