@@ -46,6 +46,7 @@ const (
 	AVG     = Op("avg")     // aggregation
 	MIN     = Op("min")     // aggregation
 	MAX     = Op("max")     // aggregation
+	BALANCE = Op("balance") // aggregation
 	TRUNC   = Op("trunc")   // aggregation
 	EXTRACT = Op("extract") // aggregation
 	ROUND   = Op("round")   // aggregation
@@ -88,6 +89,15 @@ var (
 			expect(len(options) == 1, "truncate requires exactly one option")
 			expect(slices.Contains([]string{"day", "month", "year"}, options[0]), fmt.Sprintf("truncate has no option %v", options[0]))
 			return fmt.Sprintf("EXTRACT(%v from %v)", options[0], val)
+		},
+		BALANCE: func(val string, options []string) string {
+			expect(val != "", "balance requires a value")
+			expect(len(options) == 1, "balance requires exactly one option")
+			expect(slices.Contains([]string{"day", "month", "year"}, options[0]), fmt.Sprintf("balance has no option %v", options[0]))
+			return fmt.Sprintf(`sum(
+				case when debit_account_id = '%[1]v' then %[2]v else 0 end
+				+ case when credit_account_id = '%[1]v' then %[2]v * -1 else 0 end
+			)`, options[0], val)
 		},
 		ROUND: func(val string, options []string) string {
 			expect(val != "", "round requires a value")
