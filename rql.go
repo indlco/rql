@@ -228,14 +228,33 @@ func (e ExpString) String() string {
 	return string(e)
 }
 
+// Deprecated: use the following concept if you have a postgres driver
+//
+// s.Where(
+// 	sql.P(func(b *sql.Builder) {
+// 		split := strings.Split(string(params.FilterExp), "?")
+// 		if len(split) != len(params.FilterArgs)+1 {
+// 			panic("invalid number of args")
+// 		}
+
+//		for i, v := range params.FilterArgs {
+//			b.WriteString(split[i])
+//			b.Arg(v)
+//		}
+//		b.WriteString(split[len(split)-1])
+//	}),
+//
+// )
 func (e ExpString) PostgresString(offset int) string {
 	// adapt for postgres
-	newExp := e.String()
-	cnt := strings.Count(newExp, "?")
-	for i := 1; i <= cnt; i++ {
-		newExp = strings.Replace(newExp, "?", fmt.Sprintf("$%v", i+offset), 1)
-	}
-	return newExp
+	// newExp := e.String()
+	// cnt := strings.Count(newExp, "?")
+	// for i := 1; i <= cnt; i++ {
+	// 	newExp = strings.Replace(newExp, "?", fmt.Sprintf("$%v", i+offset), 1)
+	// }
+	// return newExp
+
+	panic("deprecated")
 }
 
 // ParseQuery parses the given struct into a Param object. It returns an error

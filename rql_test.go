@@ -735,6 +735,7 @@ func TestParse(t *testing.T) {
 				}{},
 			},
 			input: []byte(`{
+								"select": ["name"],
 								"group": ["name"],
 								"sort": ["-name"]
 							}`),
@@ -1010,6 +1011,7 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 10,
 			},
 			input: []byte(`{
+							"select": ["name", "age"],
 							"group": ["name", "age"]
 							}`),
 			wantOut: &Params{
@@ -1028,6 +1030,7 @@ func TestParse(t *testing.T) {
 				DefaultLimit: 10,
 			},
 			input: []byte(`{
+					"select": ["name", "age"],
 					"group": ["name", "age"],
 					"aggregate": {
 						"gold": { "$sum": "gold_fieldname" }
@@ -1051,7 +1054,7 @@ func TestParse(t *testing.T) {
 					"count": { "$count": "age" }
 				}
 				}`),
-			wantErr: true, // not supported
+			wantErr: false, // not supported
 			wantOut: &Params{
 				Aggregate: []string{"SUM(age) AS gold", "COUNT(age) AS count"},
 				Group:     []string{"name", "age"},
