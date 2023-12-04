@@ -6,6 +6,7 @@ import (
 	"log"
 	"reflect"
 	"slices"
+	"strings"
 )
 
 // Op is a filter operator used by rql.
@@ -93,7 +94,7 @@ var (
 		BALANCE: func(val string, options []string) string {
 			expect(val != "", "balance requires a value")
 			expect(len(options) == 1, "balance requires exactly one option")
-			expect(slices.Contains([]string{"day", "month", "year"}, options[0]), fmt.Sprintf("balance has no option %v", options[0]))
+			expect(strings.Split(options[0], "_")[0] == "acc", fmt.Sprintf("balance option must start with acc_ %v", options[0]))
 			return fmt.Sprintf(`sum(
 				case when debit_account_id = '%[1]v' then %[2]v else 0 end
 				+ case when credit_account_id = '%[1]v' then %[2]v * -1 else 0 end
