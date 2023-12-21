@@ -30,27 +30,29 @@ func (o Op) String() string {
 
 // Operators that support by rql.
 const (
-	EQ      = Op("eq")      // =
-	NEQ     = Op("neq")     // <>
-	LT      = Op("lt")      // <
-	GT      = Op("gt")      // >
-	LTE     = Op("lte")     // <=
-	GTE     = Op("gte")     // >=
-	IN      = Op("in")      // IN "PATTERN"
-	LIKE    = Op("like")    // LIKE "PATTERN" (case sensitive LIKE)
-	ILIKE   = Op("ilike")   // ILIKE "PATTERN" (case insensitive LIKE)
-	NOT     = Op("not")     // disjunction
-	OR      = Op("or")      // disjunction
-	AND     = Op("and")     // conjunction
-	COUNT   = Op("count")   // aggregation
-	SUM     = Op("sum")     // aggregation
-	AVG     = Op("avg")     // aggregation
-	MIN     = Op("min")     // aggregation
-	MAX     = Op("max")     // aggregation
-	BALANCE = Op("balance") // aggregation
-	TRUNC   = Op("trunc")   // aggregation
-	EXTRACT = Op("extract") // aggregation
-	ROUND   = Op("round")   // aggregation
+	EQ        = Op("eq")        // =
+	NEQ       = Op("neq")       // <>
+	LT        = Op("lt")        // <
+	GT        = Op("gt")        // >
+	LTE       = Op("lte")       // <=
+	GTE       = Op("gte")       // >=
+	IN        = Op("in")        // IN "PATTERN"
+	LIKE      = Op("like")      // LIKE "PATTERN" (case sensitive LIKE)
+	ILIKE     = Op("ilike")     // ILIKE "PATTERN" (case insensitive LIKE)
+	ISNULL    = Op("isnull")    // IS NULL
+	ISNOTNULL = Op("isnotnull") // IS NOT NULL
+	NOT       = Op("not")       // disjunction
+	OR        = Op("or")        // disjunction
+	AND       = Op("and")       // conjunction
+	COUNT     = Op("count")     // aggregation
+	SUM       = Op("sum")       // aggregation
+	AVG       = Op("avg")       // aggregation
+	MIN       = Op("min")       // aggregation
+	MAX       = Op("max")       // aggregation
+	BALANCE   = Op("balance")   // aggregation
+	TRUNC     = Op("trunc")     // aggregation
+	EXTRACT   = Op("extract")   // aggregation
+	ROUND     = Op("round")     // aggregation
 )
 
 // Default values for configuration.
@@ -135,18 +137,20 @@ var (
 	}
 
 	opFormat = map[Op]string{
-		EQ:    "=",
-		NEQ:   "<>",
-		LT:    "<",
-		GT:    ">",
-		LTE:   "<=",
-		GTE:   ">=",
-		IN:    "IN",
-		LIKE:  "LIKE",
-		ILIKE: "ILIKE",
-		NOT:   "NOT",
-		OR:    "OR",
-		AND:   "AND",
+		EQ:        "=",
+		NEQ:       "<>",
+		LT:        "<",
+		GT:        ">",
+		LTE:       "<=",
+		GTE:       ">=",
+		IN:        "IN",
+		LIKE:      "LIKE",
+		ILIKE:     "ILIKE",
+		ISNULL:    `IS`,
+		ISNOTNULL: `IS NOT`,
+		NOT:       "NOT",
+		OR:        "OR",
+		AND:       "AND",
 	}
 )
 

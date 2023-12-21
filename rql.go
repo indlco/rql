@@ -419,59 +419,59 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	switch typ := indirect(sf.Type); typ.Kind() {
 	case reflect.Bool:
 		f.ValidateFn = validateBool
-		filterOps = append(filterOps, EQ, NEQ, IN)
+		filterOps = append(filterOps, EQ, NEQ, IN, ISNULL, ISNOTNULL)
 		modifierOps = append(modifierOps, COUNT)
 	case reflect.Array, reflect.Slice:
 		f.ValidateFn = validateString
-		filterOps = append(filterOps, EQ, NEQ)
+		filterOps = append(filterOps, EQ, NEQ, ISNULL, ISNOTNULL)
 		// modifierOps = append(modifierOps, EQ)
 	case reflect.String:
 		f.ValidateFn = validateString
 		f.SortableCaseInsensitive = true
-		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, LIKE, ILIKE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, LIKE, ILIKE, ISNULL, ISNOTNULL)
 		modifierOps = append(modifierOps, MIN, MAX, COUNT)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		f.ValidateFn = validateInt
 		f.CovertFn = convertInt
-		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
 		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ROUND, BALANCE)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		f.ValidateFn = validateUInt
 		f.CovertFn = convertInt
-		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
 		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ROUND, BALANCE)
 	case reflect.Float32, reflect.Float64:
 		f.ValidateFn = validateFloat
-		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
 		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ROUND, BALANCE)
 	case reflect.Struct:
 		switch v := reflect.Zero(typ); v.Interface().(type) {
 		case sql.NullBool:
 			f.ValidateFn = validateBool
-			filterOps = append(filterOps, EQ, NEQ, IN)
+			filterOps = append(filterOps, EQ, NEQ, IN, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, COUNT)
 		case sql.NullByte:
 			f.ValidateFn = validateString
-			filterOps = append(filterOps, EQ, NEQ)
+			filterOps = append(filterOps, EQ, NEQ, ISNULL, ISNOTNULL)
 			// modifierOps = append(modifierOps, EQ)
 		case sql.NullString:
 			f.ValidateFn = validateString
 			f.SortableCaseInsensitive = true
-			filterOps = append(filterOps, EQ, NEQ, IN)
+			filterOps = append(filterOps, EQ, NEQ, IN, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT)
 		case sql.NullInt64:
 			f.ValidateFn = validateInt
 			f.CovertFn = convertInt
-			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, BALANCE)
 		case sql.NullFloat64:
 			f.ValidateFn = validateFloat
-			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, BALANCE)
 		case time.Time:
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
-			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT, TRUNC, EXTRACT)
 		default:
 			if !v.Type().ConvertibleTo(reflect.TypeOf(time.Time{})) {
@@ -481,7 +481,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			}
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
-			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE)
+			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, EQ)
 		}
 	default:
@@ -746,7 +746,10 @@ func (p *parseState) field(f *field, v interface{}) {
 			p.WriteString(" AND ")
 		}
 		expect(f.FilterOps[opName], "can not apply op %q on field %q", opName, f.Name)
-		if opName == p.op(IN) {
+		if opName == p.op(ISNULL) || opName == p.op(ISNOTNULL) {
+			p.WriteString(p.fmtOp(f.Name, Op(opName[1:])))
+			p.values = append(p.values, nil)
+		} else if opName == p.op(IN) {
 			if valArr, ok := opVal.([]interface{}); !ok {
 				expect(false, "invalid datatype for field %q", f.Name)
 			} else {

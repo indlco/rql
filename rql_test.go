@@ -1129,6 +1129,25 @@ func TestParse(t *testing.T) {
 				Limit: 25,
 			},
 		},
+		{
+			name: "is null or is not null",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  int    `rql:"filter,group,aggregate"`
+				}{},
+			},
+			input: []byte(`{
+									"filter": {
+										"name": { "$isnull": true },
+										"age": { "$isnotnull": true }
+									}
+									}`),
+			wantOut: &Params{
+				FilterExp: "age IS NOT NULL AND name IS NULL",
+				Limit:     25,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
