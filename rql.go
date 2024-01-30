@@ -791,16 +791,18 @@ func (p *Parser) fmtOp(field string, op Op, length ...int) string {
 func (p *Parser) colName(field string) string {
 	str := field
 	if p.FieldSep != DefaultFieldSep {
-		str = strings.Replace(field, p.FieldSep, DefaultFieldSep, -1)
-	}
-	if p.Config.InterpretFieldSepAsNestedJsonbObject {
-		str = strings.Replace(str, DefaultFieldSep, p.Config.JsonbSep, -1)
+		if p.Config.InterpretFieldSepAsNestedJsonbObject {
+			str = strings.Replace(str, p.FieldSep, p.Config.JsonbSep, -1)
 
-		i := strings.LastIndex(str, p.Config.JsonbSep)
-		if i > 0 {
-			str = str[:i] + strings.Replace(str[i:], p.Config.JsonbSep, p.Config.JsonbLastSep, 1)
+			i := strings.LastIndex(str, p.Config.JsonbSep)
+			if i > 0 {
+				str = str[:i] + strings.Replace(str[i:], p.Config.JsonbSep, p.Config.JsonbLastSep, 1)
+			}
+		} else {
+			str = strings.Replace(field, p.FieldSep, DefaultFieldSep, -1)
 		}
 	}
+
 	return str
 }
 
