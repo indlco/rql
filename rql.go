@@ -355,6 +355,10 @@ func (p *Parser) init() error {
 					l.PushFront(f1)
 				}
 			}
+			// allow field without tag to be selected.
+			if err := p.parseField(f); err != nil {
+				return err
+			}
 		case f.Anonymous:
 			p.Log("ignore embedded field %q that is not struct type", f.Name)
 		default:
