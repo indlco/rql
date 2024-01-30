@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+type Address struct {
+	Name string `rql:"filter,sort"`
+	ZIP  *struct {
+		Code int `rql:"filter,sort"`
+	}
+}
+
 func TestInit(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -501,6 +508,31 @@ func TestParse(t *testing.T) {
 							Code int `rql:"filter,sort"`
 						}
 					}
+				}{},
+				FieldSep:                             ".",
+				InterpretFieldSepAsNestedJsonbObject: true,
+				DefaultLimit:                         25,
+			},
+			input: []byte(`{
+								"filter": {
+									"address.zip.code": 100
+								},
+								"sort": ["address.name", "-address.zip.code", "+age"]
+							}`),
+			wantOut: &Params{
+				Limit:      25,
+				FilterExp:  "address->zip->>code = ?",
+				FilterArgs: []interface{}{100},
+				Sort:       []string{"lower(address->>name)", "address->zip->>code desc", "age asc"},
+			},
+		},
+		{
+			name: "sort with type object ->InterpretFieldSepAsNestedJsonbObject",
+			conf: Config{
+				Model: struct {
+					Age     int    `rql:"filter,sort"`
+					Name    string `rql:"filter,sort"`
+					Address Address
 				}{},
 				FieldSep:                             ".",
 				InterpretFieldSepAsNestedJsonbObject: true,

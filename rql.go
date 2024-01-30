@@ -586,7 +586,7 @@ func (p *Parser) applyModifiers(field string, typ string) (fieldName string, res
 	fieldName = split[0]
 	res = fieldName
 	expect(fieldName != "", "group field can not be empty")
-	expect(p.fields[fieldName] != nil, "unrecognized key %q for grouping", fieldName)
+	expect(p.fields[fieldName] != nil, "unrecognized key %q for applying modifiers", fieldName)
 	expect(typ != "group" || p.fields[fieldName].Groupable, "field %q is not groupable", fieldName)
 
 	if len(split) > 1 {
@@ -605,7 +605,7 @@ func (p *Parser) applyOptions(val, cmd string) (res string) {
 	split := strings.Split(cmd, ":")
 	modifier := split[0]
 	expect(modifier != "", "modifier command can not be empty")
-	expect(p.fields[val] != nil, "unrecognized key %q for grouping", val)
+	expect(p.fields[val] != nil, "unrecognized key %q for applying options", val)
 	expect(p.fields[val].ModifierOps[modifier], "field %q has no modifier %v", val, modifier)
 
 	options := []string{}
