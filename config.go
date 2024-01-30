@@ -57,13 +57,15 @@ const (
 
 // Default values for configuration.
 const (
-	DefaultTagName  = "rql"
-	DefaultOpPrefix = "$"
-	DefaultFieldSep = "_"
-	DefaultLimit    = 25
-	DefaultMaxLimit = 100
-	Offset          = "offset"
-	Limit           = "limit"
+	DefaultTagName      = "rql"
+	DefaultOpPrefix     = "$"
+	DefaultFieldSep     = "_"
+	DefaultJsonbSep     = "->"
+	DefaultJsonbLastSep = "->>"
+	DefaultLimit        = 25
+	DefaultMaxLimit     = 100
+	Offset              = "offset"
+	Limit               = "limit"
 )
 
 var (
@@ -204,6 +206,12 @@ type Config struct {
 	// 	}
 	//
 	FieldSep string
+	// JsonbSep replaces the field Separator with JsonbSep to access nested jsonb objects in postgres
+	JsonbSep string
+	// replaces the last jsonbSep with JsonbLastSep to access nested jsonb objects in postgres without quotes
+	JsonbLastSep string
+	// InterpretFieldSepAsNestedJsonbObject replaces the fieldSep with -> to access nested jsonb objects in postgres
+	InterpretFieldSepAsNestedJsonbObject bool
 	// ColumnFn is the function that translate the struct field string into a table column.
 	// For example, given the following fields and their column names:
 	//
@@ -252,6 +260,8 @@ func (c *Config) defaults() error {
 	defaultString(&c.TagName, DefaultTagName)
 	defaultString(&c.OpPrefix, DefaultOpPrefix)
 	defaultString(&c.FieldSep, DefaultFieldSep)
+	defaultString(&c.JsonbSep, DefaultJsonbSep)
+	defaultString(&c.JsonbLastSep, DefaultJsonbLastSep)
 	defaultInt(&c.DefaultLimit, DefaultLimit)
 	defaultInt(&c.LimitMaxValue, DefaultMaxLimit)
 	return nil

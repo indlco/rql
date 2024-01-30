@@ -789,10 +789,19 @@ func (p *Parser) fmtOp(field string, op Op, length ...int) string {
 // field separator. for example: if the user configured the field separator to be ".", the fields
 // like "address.name" will be changed to "address_name".
 func (p *Parser) colName(field string) string {
+	str := field
 	if p.FieldSep != DefaultFieldSep {
-		return strings.Replace(field, p.FieldSep, DefaultFieldSep, -1)
+		str = strings.Replace(field, p.FieldSep, DefaultFieldSep, -1)
 	}
-	return field
+	if p.Config.InterpretFieldSepAsNestedJsonbObject {
+		str = strings.Replace(str, DefaultFieldSep, p.Config.JsonbSep, -1)
+
+		i := strings.LastIndex(str, p.Config.JsonbSep)
+		if i > 0 {
+			str = str[:i] + strings.Replace(str[i:], p.Config.JsonbSep, p.Config.JsonbLastSep, 1)
+		}
+	}
+	return str
 }
 
 func (p *Parser) op(op Op) string {
