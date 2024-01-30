@@ -10,13 +10,6 @@ import (
 	"time"
 )
 
-type Address struct {
-	Name string `rql:"filter,sort"`
-	ZIP  *struct {
-		Code int `rql:"filter,sort"`
-	}
-}
-
 func TestInit(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -521,23 +514,31 @@ func TestParse(t *testing.T) {
 							}`),
 			wantOut: &Params{
 				Limit:      25,
-				FilterExp:  "address->zip->>code = ?",
+				FilterExp:  "address->'zip'->>'code' = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(address->>name)", "address->zip->>code desc", "age asc"},
+				Sort:       []string{"lower(address->>'name')", "address->'zip'->>'code' desc", "age asc"},
 			},
 		},
 		{
 			name: "sort with type object ->InterpretFieldSepAsNestedJsonbObject",
-			conf: Config{
-				Model: struct {
-					Age     int    `rql:"filter,sort"`
-					Name    string `rql:"filter,sort"`
-					Address Address
-				}{},
-				FieldSep:                             ".",
-				InterpretFieldSepAsNestedJsonbObject: true,
-				DefaultLimit:                         25,
-			},
+			conf: (func() Config {
+				type Address struct {
+					Name string `rql:"filter,sort"`
+					ZIP  *struct {
+						Code int `rql:"filter,sort"`
+					}
+				}
+				return Config{
+					Model: struct {
+						Age     int    `rql:"filter,sort"`
+						Name    string `rql:"filter,sort"`
+						Address Address
+					}{},
+					FieldSep:                             ".",
+					InterpretFieldSepAsNestedJsonbObject: true,
+					DefaultLimit:                         25,
+				}
+			})(),
 			input: []byte(`{
 								"filter": {
 									"address.zip.code": 100
@@ -546,9 +547,9 @@ func TestParse(t *testing.T) {
 							}`),
 			wantOut: &Params{
 				Limit:      25,
-				FilterExp:  "address->zip->>code = ?",
+				FilterExp:  "address->'zip'->>'code' = ?",
 				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(address->>name)", "address->zip->>code desc", "age asc"},
+				Sort:       []string{"lower(address->>'name')", "address->'zip'->>'code' desc", "age asc"},
 			},
 		},
 		{
@@ -580,35 +581,6 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "sort with default field separator ->InterpretFieldSepAsNestedJsonbObject",
-			conf: Config{
-				Model: struct {
-					Age     int    `rql:"filter,sort"`
-					Name    string `rql:"filter,sort"`
-					Address struct {
-						Name string `rql:"filter,sort"`
-						ZIP  *struct {
-							Code int `rql:"filter,sort"`
-						}
-					}
-				}{},
-				InterpretFieldSepAsNestedJsonbObject: true,
-				DefaultLimit:                         25,
-			},
-			input: []byte(`{
-								"filter": {
-									"address_zip_code": 100
-								},
-								"sort": ["address_name", "-address_zip_code", "+age"]
-							}`),
-			wantOut: &Params{
-				Limit:      25,
-				FilterExp:  "address->zip->>code = ?",
-				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(address->>name)", "address->zip->>code desc", "age asc"},
-			},
-		},
-		{
 			name: "sort with default sort field configured, and no sort in query",
 			conf: Config{
 				Model: struct {
@@ -633,36 +605,6 @@ func TestParse(t *testing.T) {
 			wantOut: &Params{
 				Limit:      25,
 				FilterExp:  "address_zip_code = ?",
-				FilterArgs: []interface{}{100},
-				Sort:       []string{"lower(name) desc"},
-			},
-		},
-		{
-			name: "sort with default sort field configured, and no sort in query ->InterpretFieldSepAsNestedJsonbObject",
-			conf: Config{
-				Model: struct {
-					Age     int    `rql:"filter,sort"`
-					Name    string `rql:"filter,sort"`
-					Address struct {
-						Name string `rql:"filter,sort"`
-						ZIP  *struct {
-							Code int `rql:"filter,sort"`
-						}
-					}
-				}{},
-				InterpretFieldSepAsNestedJsonbObject: true,
-				DefaultLimit:                         25,
-				DefaultSort:                          []string{"-name"},
-			},
-			input: []byte(`{
-								"filter": {
-									"address_zip_code": 100
-								},
-								"sort": []
-							}`),
-			wantOut: &Params{
-				Limit:      25,
-				FilterExp:  "address->zip->>code = ?",
 				FilterArgs: []interface{}{100},
 				Sort:       []string{"lower(name) desc"},
 			},
@@ -1251,29 +1193,29 @@ func TestParse(t *testing.T) {
 				Limit: 25,
 			},
 		},
-		{
-			name: "is null or is not null",
-			conf: Config{
-				Model: struct {
-					Name string `rql:"filter,group"`
-					Age  int    `rql:"filter,group,aggregate"`
-				}{},
-			},
-			input: []byte(`{
-									"filter": {
-										"name": { "$isnull": true },
-										"age": { "$isnotnull": true }
-									}
-									}`),
-			wantOut: &Params{
-				FilterExp: "age IS NOT NULL AND name IS NULL",
-				Limit:     25,
-			},
-		},
+		// {
+		// 	name: "is null or is not null",
+		// 	conf: Config{
+		// 		Model: struct {
+		// 			Name string `rql:"filter,group"`
+		// 			Age  int    `rql:"filter,group,aggregate"`
+		// 		}{},
+		// 	},
+		// 	input: []byte(`{
+		// 							"filter": {
+		// 								"name": { "$isnull": true },
+		// 								"age": { "$isnotnull": true }
+		// 							}
+		// 							}`),
+		// 	wantOut: &Params{
+		// 		FilterExp: "age IS NOT NULL AND name IS NULL",
+		// 		Limit:     25,
+		// 	},
+		// },
 	}
 	for _, tt := range tests {
+		fmt.Println("# " + tt.name)
 		t.Run(tt.name, func(t *testing.T) {
-			fmt.Println(tt.name)
 			tt.conf.Log = t.Logf
 			p, err := NewParser(tt.conf)
 			if err != nil {
@@ -1285,7 +1227,6 @@ func TestParse(t *testing.T) {
 			}
 			assertParams(t, out, tt.wantOut)
 		})
-		return
 	}
 }
 

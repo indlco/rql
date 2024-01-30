@@ -796,7 +796,15 @@ func (p *Parser) colName(field string) string {
 	str := field
 	if p.FieldSep != DefaultFieldSep {
 		if p.Config.InterpretFieldSepAsNestedJsonbObject {
-			str = strings.Replace(str, p.FieldSep, p.Config.JsonbSep, -1)
+			split := strings.Split(field, p.FieldSep)
+			str = split[0]
+			for i := 1; i < len(split); i++ {
+				if regexp.MustCompile(`^[0-9]+$`).MatchString(split[i]) {
+					str += p.Config.JsonbSep + split[i]
+				} else {
+					str += p.Config.JsonbSep + "'" + split[i] + "'"
+				}
+			}
 
 			i := strings.LastIndex(str, p.Config.JsonbSep)
 			if i > 0 {
