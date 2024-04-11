@@ -1126,6 +1126,23 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "abs",
+			conf: Config{
+				Model: struct {
+					Age int `rql:"filter,group,aggregate"`
+				}{},
+				DefaultLimit: 10,
+			},
+			input: []byte(`{
+				"select": ["age|abs"]
+				}`),
+			wantErr: false, // not supported
+			wantOut: &Params{
+				Select: []string{"ABS(age) AS age"},
+				Limit:  10,
+			},
+		},
+		{
 			name: "column in (?,?,?)",
 			conf: Config{
 				Model: struct {

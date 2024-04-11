@@ -438,16 +438,16 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 		f.ValidateFn = validateInt
 		f.CovertFn = convertInt
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
-		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ROUND, BALANCE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ABS, ROUND, BALANCE)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		f.ValidateFn = validateUInt
 		f.CovertFn = convertInt
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
-		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ROUND, BALANCE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ABS, ROUND, BALANCE)
 	case reflect.Float32, reflect.Float64:
 		f.ValidateFn = validateFloat
 		filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
-		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ROUND, BALANCE)
+		modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, AVG, ABS, ROUND, BALANCE)
 	case reflect.Struct:
 		switch v := reflect.Zero(typ); v.Interface().(type) {
 		case sql.NullBool:
@@ -467,11 +467,11 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			f.ValidateFn = validateInt
 			f.CovertFn = convertInt
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND, ISNULL, ISNOTNULL)
-			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, BALANCE)
+			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, ABS, BALANCE)
 		case sql.NullFloat64:
 			f.ValidateFn = validateFloat
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND, ISNULL, ISNOTNULL)
-			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, BALANCE)
+			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, ABS, BALANCE)
 		case time.Time:
 			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)

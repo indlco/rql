@@ -46,6 +46,7 @@ const (
 	AND       = Op("and")       // conjunction
 	COUNT     = Op("count")     // aggregation
 	SUM       = Op("sum")       // aggregation
+	ABS       = Op("abs")       // aggregation
 	AVG       = Op("avg")       // aggregation
 	MIN       = Op("min")       // aggregation
 	MAX       = Op("max")       // aggregation
@@ -120,6 +121,11 @@ var (
 			expect(val != "", "max requires a value")
 			expect(len(options) == 0, "max accepts no options")
 			return fmt.Sprintf("MAX(%v)", val)
+		},
+		ABS: func(val string, options []string) string {
+			expect(val != "", "abs requires a value")
+			expect(len(options) == 0, "abs accepts no options")
+			return fmt.Sprintf("ABS(%v)", val)
 		},
 		SUM: func(val string, options []string) string {
 			expect(val != "", "sum requires a value")
