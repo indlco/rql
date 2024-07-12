@@ -451,7 +451,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	case reflect.Struct:
 		switch v := reflect.Zero(typ); v.Interface().(type) {
 		case sql.NullBool:
-			f.ValidateFn = validateString // validateBool -> FIXME: disabled for nested json query
+			f.ValidateFn = validateBool
 			filterOps = append(filterOps, EQ, NEQ, IN, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, COUNT)
 		case sql.NullByte:
@@ -464,16 +464,16 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 			filterOps = append(filterOps, EQ, NEQ, IN, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT)
 		case sql.NullInt64:
-			f.ValidateFn = validateString // validateInt -> FIXME: disabled for nested json query
+			f.ValidateFn = validateInt
 			f.CovertFn = convertInt
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, ABS, BALANCE)
 		case sql.NullFloat64:
-			f.ValidateFn = validateString // validateFloat -> FIXME: disabled for nested json query
+			f.ValidateFn = validateFloat
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, AVG, ROUND, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT, SUM, ABS, BALANCE)
 		case time.Time:
-			f.ValidateFn = validateString // validateTime(layout) -> FIXME: disabled for nested json query
+			f.ValidateFn = validateTime(layout)
 			f.CovertFn = convertTime(layout)
 			filterOps = append(filterOps, EQ, NEQ, IN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
 			modifierOps = append(modifierOps, MIN, MAX, COUNT, TRUNC, EXTRACT)
@@ -499,6 +499,12 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	for _, op := range modifierOps {
 		f.ModifierOps[op.String()] = true
 	}
+
+	// override validateFn if nested
+	if strings.Contains(f.Name, p.FieldSep) {
+		f.ValidateFn = validateString
+	}
+
 	p.fields[f.Name] = f
 	return nil
 }
