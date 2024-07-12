@@ -1126,7 +1126,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "abs",
+			name: "abs select",
 			conf: Config{
 				Model: struct {
 					Age int `rql:"filter,group,aggregate"`
@@ -1140,6 +1140,23 @@ func TestParse(t *testing.T) {
 			wantOut: &Params{
 				Select: []string{"ABS(age) AS age"},
 				Limit:  10,
+			},
+		},
+		{
+			name: "abs sort",
+			conf: Config{
+				Model: struct {
+					Age int `rql:"filter,group,aggregate"`
+				}{},
+				DefaultLimit: 10,
+			},
+			input: []byte(`{
+				"sort": ["age|abs","-age|abs"]
+				}`),
+			wantErr: false, // not supported
+			wantOut: &Params{
+				Sort:  []string{"ABS(age) desc"},
+				Limit: 10,
 			},
 		},
 		{
