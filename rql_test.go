@@ -1179,6 +1179,25 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "column not in (?,?,?)",
+			conf: Config{
+				Model: struct {
+					Name string `rql:"filter,group"`
+					Age  int    `rql:"filter,group,aggregate"`
+				}{},
+			},
+			input: []byte(`{
+				"filter": {
+					"name": { "$nin": ["peter","hans","jakob"] }
+				}
+				}`),
+			wantOut: &Params{
+				FilterExp:  "name NOT IN (?,?,?)",
+				FilterArgs: []interface{}{"peter", "hans", "jakob"},
+				Limit:      25,
+			},
+		},
+		{
 			name: "invalid offset",
 			conf: Config{
 				Model: struct{}{},

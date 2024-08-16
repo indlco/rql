@@ -37,6 +37,7 @@ const (
 	LTE       = Op("lte")       // <=
 	GTE       = Op("gte")       // >=
 	IN        = Op("in")        // IN "PATTERN"
+	NIN       = Op("nin")       // NOT IN "PATTERN"
 	LIKE      = Op("like")      // LIKE "PATTERN" (case sensitive LIKE)
 	ILIKE     = Op("ilike")     // ILIKE "PATTERN" (case insensitive LIKE)
 	ISNULL    = Op("isnull")    // IS NULL
@@ -152,6 +153,7 @@ var (
 		LTE:       "<=",
 		GTE:       ">=",
 		IN:        "IN",
+		NIN:       "NOT IN",
 		LIKE:      "LIKE",
 		ILIKE:     "ILIKE",
 		ISNULL:    `IS`,
