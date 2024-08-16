@@ -9,6 +9,7 @@ import (
 	"math"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -760,7 +761,7 @@ func (p *parseState) field(f *field, v interface{}) {
 		if opName == p.op(ISNULL) || opName == p.op(ISNOTNULL) {
 			p.WriteString(p.fmtOp(f.Name, Op(opName[1:])))
 			p.values = append(p.values, nil)
-		} else if opName == p.op(IN) {
+		} else if slices.Contains([]string{p.op(IN), p.op(NIN)}, opName) {
 			if valArr, ok := opVal.([]interface{}); !ok {
 				expect(false, "invalid datatype for field %q", f.Name)
 			} else {
@@ -786,7 +787,7 @@ func (p *parseState) field(f *field, v interface{}) {
 // for example: "name = ?", or "age >= ?".
 func (p *Parser) fmtOp(field string, op Op, length ...int) string {
 	colName := p.colName(field)
-	if op == IN && len(length) > 0 && length[0] > 0 {
+	if slices.Contains([]Op{IN, NIN}, op) && len(length) > 0 && length[0] > 0 {
 		args := make([]string, 0, length[0])
 		for i := 0; i < length[0]; i++ {
 			args = append(args, "?")
