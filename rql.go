@@ -502,7 +502,7 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 	}
 
 	// override validateFn if nested
-	// FIXME: override validateFn if nested -> this is a hacky solution, we should find a better way to handle nested fields with the correct type casting (instead of nestedObj->>'fieldname')
+	// FIXME: override validateFn if nested -> this is a hacky solution, we should find a better way to handle nested fields with the correct type casting (instead of nestedObj->>'fieldname') -> e.g. use proper type casting
 	if strings.Contains(f.Name, p.FieldSep) {
 		f.ValidateFn = validateString
 	}
@@ -555,13 +555,14 @@ func (p *Parser) sort(fields []string) []string {
 			orderBy = order
 			field = field[1:]
 		}
-		expect(p.fields[field] != nil, "unrecognized key %q for sorting", field)
-		expect(p.fields[field].Sortable, "field %q is not sortable", field)
+		key, finalCol := p.applyModifiers(field, "select")
+		expect(p.fields[key] != nil, "unrecognized key %q for sorting", field)
+		expect(p.fields[key].Sortable, "field %q is not sortable", field)
 		colName := ""
-		if p.fields[field].SortableCaseInsensitive {
-			colName = fmt.Sprintf("lower(%v)", p.colName(field))
+		if p.fields[key].SortableCaseInsensitive {
+			colName = fmt.Sprintf("lower(%v)", p.colName(finalCol))
 		} else {
-			colName = fmt.Sprintf("%v", p.colName(field))
+			colName = fmt.Sprintf("%v", p.colName(finalCol))
 		}
 		if orderBy != "" {
 			colName += " " + orderBy
@@ -596,10 +597,10 @@ func (p *Parser) sel(fields []string) []string {
 func (p *Parser) applyModifiers(field string, typ string) (fieldName string, res string) {
 	split := strings.Split(field, "|")
 	fieldName = split[0]
-	res = fieldName
+	res = p.colName(fieldName)
 	expect(fieldName != "", "group field can not be empty")
 	expect(p.fields[fieldName] != nil, "unrecognized key %q for applying modifiers", fieldName)
-	expect(typ != "group" || p.fields[fieldName].Groupable, "field %q is not groupable", fieldName)
+	expect(typ != "group" || (typ == "group" && p.fields[fieldName].Groupable), "field %q is not groupable", fieldName)
 
 	if len(split) > 1 {
 		if len(split) > 2 {
@@ -613,18 +614,18 @@ func (p *Parser) applyModifiers(field string, typ string) (fieldName string, res
 	return fieldName, res
 }
 
-func (p *Parser) applyOptions(val, cmd string) (res string) {
+func (p *Parser) applyOptions(key, cmd string) (res string) {
 	split := strings.Split(cmd, ":")
 	modifier := split[0]
 	expect(modifier != "", "modifier command can not be empty")
-	expect(p.fields[val] != nil, "unrecognized key %q for applying options", val)
-	expect(p.fields[val].ModifierOps[modifier], "field %q has no modifier %v", val, modifier)
+	expect(p.fields[key] != nil, "unrecognized key %q for applying options", key)
+	expect(p.fields[key].ModifierOps[modifier], "field %q has no modifier %v", key, modifier)
 
 	options := []string{}
 	if len(split) > 1 {
 		options = split[1:]
 	}
-	return Op(modifier).FormatModifier(val, options)
+	return Op(modifier).FormatModifier(key, options)
 }
 
 func (p *parseState) aggregate(f map[string]interface{}) {
@@ -670,9 +671,15 @@ func (p *parseState) aggregate(f map[string]interface{}) {
 
 func (p *parseState) and(f map[string]interface{}) {
 	var i int
-	for k, v := range f {
+	for rawKey, v := range f {
 		if i > 0 {
 			p.WriteString(" AND ")
+		}
+		k := rawKey
+		modifiers := []string{}
+		if split := strings.Split(k, "|"); len(split) >= 2 {
+			k = split[0]
+			modifiers = append(modifiers, split[1:]...)
 		}
 		switch {
 		case k == p.op(OR):
@@ -689,7 +696,7 @@ func (p *parseState) and(f map[string]interface{}) {
 			p.notOp(NOT, terms)
 		case p.fields[k] != nil:
 			expect(p.fields[k].Filterable, "field %q is not filterable", k)
-			p.field(p.fields[k], v)
+			p.field(p.fields[k], v, modifiers...)
 		default:
 			expect(false, "unrecognized key %q for filtering", k)
 		}
@@ -741,12 +748,15 @@ func (p *parseState) notOp(op Op, terms []interface{}) {
 	}
 }
 
-func (p *parseState) field(f *field, v interface{}) {
+func (p *parseState) field(f *field, v interface{}, modifiers ...string) {
 	terms, ok := v.(map[string]interface{})
+
+	_, finalCol := p.applyModifiers(strings.Join(append([]string{f.Name}, modifiers...), "|"), "select")
+
 	// default equality check.
 	if !ok {
-		must(f.ValidateFn(v), "invalid datatype for field %q", f.Name)
-		p.WriteString(p.fmtOp(f.Name, EQ))
+		must(f.ValidateFn(v), "invalid datatype for field %q", finalCol)
+		p.WriteString(p.fmtOp(finalCol, EQ))
 		p.values = append(p.values, f.CovertFn(v))
 	}
 	var i int
@@ -757,23 +767,23 @@ func (p *parseState) field(f *field, v interface{}) {
 		if i > 0 {
 			p.WriteString(" AND ")
 		}
-		expect(f.FilterOps[opName], "can not apply op %q on field %q", opName, f.Name)
+		expect(f.FilterOps[opName], "can not apply op %q on field %q", opName, finalCol)
 		if opName == p.op(ISNULL) || opName == p.op(ISNOTNULL) {
-			p.WriteString(p.fmtOp(f.Name, Op(opName[1:])))
+			p.WriteString(p.fmtOp(finalCol, Op(opName[1:])))
 			p.values = append(p.values, nil)
 		} else if slices.Contains([]string{p.op(IN), p.op(NIN)}, opName) {
 			if valArr, ok := opVal.([]interface{}); !ok {
-				expect(false, "invalid datatype for field %q", f.Name)
+				expect(false, "invalid datatype for field %q", finalCol)
 			} else {
 				for _, inVal := range valArr {
-					must(f.ValidateFn(inVal), "invalid datatype or format in array of field %q", f.Name)
+					must(f.ValidateFn(inVal), "invalid datatype or format in array of field %q", finalCol)
 					p.values = append(p.values, f.CovertFn(inVal))
 				}
-				p.WriteString(p.fmtOp(f.Name, Op(opName[1:]), len(valArr)))
+				p.WriteString(p.fmtOp(finalCol, Op(opName[1:]), len(valArr)))
 			}
 		} else {
-			must(f.ValidateFn(opVal), "invalid datatype or format for field %q", f.Name)
-			p.WriteString(p.fmtOp(f.Name, Op(opName[1:])))
+			must(f.ValidateFn(opVal), "invalid datatype or format for field %q", finalCol)
+			p.WriteString(p.fmtOp(finalCol, Op(opName[1:])))
 			p.values = append(p.values, f.CovertFn(opVal))
 		}
 		i++
@@ -930,7 +940,8 @@ func convertInt(v interface{}) interface{} {
 // convert string to time object.
 func convertTime(layout string) func(interface{}) interface{} {
 	return func(v interface{}) interface{} {
-		t, _ := time.Parse(layout, v.(string))
+		t, err := time.Parse(layout, v.(string))
+		expect(err == nil, "time not provided in expected format")
 		return t
 	}
 }
