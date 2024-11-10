@@ -597,7 +597,7 @@ func (p *Parser) sel(fields []string) []string {
 func (p *Parser) applyModifiers(field string, typ string) (fieldName string, res string) {
 	split := strings.Split(field, "|")
 	fieldName = split[0]
-	res = p.colName(fieldName)
+	res = fieldName
 	expect(fieldName != "", "group field can not be empty")
 	expect(p.fields[fieldName] != nil, "unrecognized key %q for applying modifiers", fieldName)
 	expect(typ != "group" || (typ == "group" && p.fields[fieldName].Groupable), "field %q is not groupable", fieldName)
@@ -825,7 +825,8 @@ func (p *Parser) colName(field string) string {
 			}
 
 			i := strings.LastIndex(str, p.Config.JsonbSep)
-			if i > 0 {
+			l := strings.LastIndex(str, p.Config.JsonbLastSep)
+			if i > 0 && i != l {
 				str = str[:i] + strings.Replace(str[i:], p.Config.JsonbSep, p.Config.JsonbLastSep, 1)
 			}
 		} else {
