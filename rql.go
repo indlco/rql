@@ -942,6 +942,9 @@ func convertTime(layout string) func(interface{}) interface{} {
 	return func(v interface{}) interface{} {
 		t, err := time.Parse(layout, v.(string))
 		expect(err == nil, "time not provided in expected format")
+		if t.Location() == time.UTC {
+			t = t.In(time.UTC)
+		}
 		return t
 	}
 }
