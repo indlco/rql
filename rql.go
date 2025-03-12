@@ -342,10 +342,6 @@ func (p *Parser) init() error {
 		switch t := indirect(f.Type); {
 		// no matter what the type of this field. if it has a tag,
 		// it is probably a filterable or sortable.
-		case ok:
-			if err := p.parseField(f); err != nil {
-				return err
-			}
 		case t.Kind() == reflect.Struct:
 			for i := 0; i < t.NumField(); i++ {
 				f1 := t.Field(i)
@@ -357,6 +353,10 @@ func (p *Parser) init() error {
 				}
 			}
 			// allow field without tag to be selected.
+			if err := p.parseField(f); err != nil {
+				return err
+			}
+		case ok:
 			if err := p.parseField(f); err != nil {
 				return err
 			}
