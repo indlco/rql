@@ -483,11 +483,14 @@ func (p *Parser) parseField(sf reflect.StructField) error {
 				if !p.Config.DoNotLog {
 					fmt.Printf("rql: field type '%v' for %q is not supported - only allowed for select\n", typ.Kind(), sf.Name)
 				}
+				filterOps = append(filterOps, EQ, NEQ, IN, NIN, ISNULL, ISNOTNULL)
+				modifierOps = append(modifierOps, EQ)
+			} else {
+				f.ValidateFn = validateTime(layout)
+				f.CovertFn = convertTime(layout)
+				filterOps = append(filterOps, EQ, NEQ, IN, NIN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
+				modifierOps = append(modifierOps, EQ)
 			}
-			f.ValidateFn = validateTime(layout)
-			f.CovertFn = convertTime(layout)
-			filterOps = append(filterOps, EQ, NEQ, IN, NIN, LT, LTE, GT, GTE, ISNULL, ISNOTNULL)
-			modifierOps = append(modifierOps, EQ)
 		}
 	default:
 		if !p.Config.DoNotLog {
