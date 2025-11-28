@@ -348,7 +348,9 @@ func (p *Parser) init() error {
 				if !f.Anonymous {
 					f1.Name = f.Name + p.FieldSep + f1.Name
 				}
-				if f.Name != "Edges" {
+
+				// avoid infinite loop
+				if f.Name != "Edges" && strings.Count(f1.Name, ".") < 6 {
 					l.PushFront(f1)
 				}
 			}
